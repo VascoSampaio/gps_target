@@ -6,7 +6,7 @@
 
 
 
-	<node pkg="target" name="read_write" type="read_write_node" output="screen">
+	<node pkg="gps_target" name="read_write" type="read_write_node" output="screen">
 		<param name="vend" value="$(arg vend)"/>
 		<param name="prod" value="$(arg prod)"/>
 		<param name="c" value="$(arg c)"/>
