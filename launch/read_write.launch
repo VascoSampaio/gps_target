@@ -1,0 +1,16 @@
+<launch>
+		<arg name="vend" default="1027"/>
+		<arg name="prod" default="24577"/>
+		<arg name="c" default="1155"/>
+		<arg name="size" default="20"/>
+
+
+
+	<node pkg="target" name="read_write" type="read_write_node" output="screen">
+		<param name="vend" value="$(arg vend)"/>
+		<param name="prod" value="$(arg prod)"/>
+		<param name="c" value="$(arg c)"/>
+		<param name="size" value="$(arg size)"/>
+	</node>
+
+</launch>
