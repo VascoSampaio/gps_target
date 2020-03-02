@@ -10,6 +10,7 @@ add_compile_options(-std=c++11)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   mavros_msgs
+  multidrone_kml_parser
 )
 
 ###########
@@ -17,18 +18,18 @@ find_package(catkin REQUIRED COMPONENTS
 ###########
 
 catkin_package(
-  CATKIN_DEPENDS roscpp mavros_msgs
+  CATKIN_DEPENDS roscpp mavros_msgs multidrone_kml_parser
 )
-
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-  ${catkin_INCLUDE_DIRS}
+  include
+  ${catkin_INCLUDE_DIRS}  
 )
 
 ## Declare a C++ executable. With catkin_make all packages are built within a single CMake context. The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME}_node src/target_node.cpp)
+add_executable(${PROJECT_NAME}_node src/gps_target_node.cpp)
 add_executable(read_write_node src/read_write.cpp)
 
 ## Specify libraries to link a library or executable target against
