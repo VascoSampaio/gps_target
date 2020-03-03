@@ -122,7 +122,7 @@ static void ubx_cfg(int fd, int clas, int id){
 
 		 case  RATE :
 			std::cout << "Configurating RATE\n";
-		 	ubx_cfg_rate.measRate      = 1000; //Elapsed Time between messages
+		 	ubx_cfg_rate.measRate      = id; //Elapsed Time between messages
  			ubx_cfg_rate.navRate       = 1;  //Number of elapsed measurments that trigger a navigation epoch
 			ubx_cfg_rate.timeRef       = 0;  //Time system to which measurements are aligned; 0 - UTC; 1 - GPS; 2- GLONASS
 			buf[3]                     = 0x08;
@@ -145,7 +145,7 @@ void start_gps_stream(int fd){
 		ROS_ERROR("FAILED TO START GPS STREAM");
 }
 
-static unsigned char getbyte(int fd, unsigned char rbuf[], unsigned char *&rp, uint8_t* bufcnt, uint8_t size)
+static unsigned char getbyte(int fd, char rbuf[], char *&rp, uint8_t* bufcnt, uint8_t size)
 {
 	// std::cout << "IN FUNCTION " <<"\n\n";
 	// std::cout << "rp is "   <<  (int)*rp   <<"\n";
@@ -167,22 +167,23 @@ static unsigned char getbyte(int fd, unsigned char rbuf[], unsigned char *&rp, u
     return *rp++;
 }
 
-uint8_t* hex_decode(const unsigned char *in, size_t len,uint8_t *out){
+bool hex_decode(const char *in, size_t len,char *out){
         unsigned int i, t, hn, ln;
         for (t = 0,i = 0; i < len; i+=2,++t) {
                 hn = in[i] > '9' ? in[i] - 'A' + 10 : in[i] - '0';
                 ln = in[i+1] > '9' ? in[i+1] - 'A' + 10 : in[i+1] - '0';
-                out[t] = (hn << 4 ) | ln;
+                if(out[t] == (hn << 4 ) | ln);
+					return true;
         }
-        return out;
+	return false;        
 }
 
 template <typename T, bool space>
 static bool readwrite(int fd){
 
 uint8_t n = 0, BLEN = 100, MLEN = 10;
-unsigned char buf[BLEN], msg_class, id, length, sync, mesg[MLEN-2];
-unsigned char *rp = &buf[BLEN];
+char buf[BLEN], msg_class, id, length, sync, mesg[MLEN-2];
+char *rp = &buf[BLEN];
 	
 	// std::cout << "\nrp is "   <<  (int)*rp   <<"\n";
 	// std::cout << "buf is "  <<  &buf <<"\n";	
@@ -222,55 +223,51 @@ unsigned char *rp = &buf[BLEN];
 		double divisor = 0.1, 
 		latitude = 0; 
 		longitude = 0;
-		uint8_t crc = 0;
+		char crc = 0;
+		unsigned char c;
+		enum {START_WAIT, RECEIVING, MSG_RECEIVED} state = START_WAIT; 
  
-		// while(getbyte(fd, buf,rp, &n, BLEN) != '$'){if(rp - buf >= BLEN) return 0;}
-		// while(getbyte(fd, buf,rp, &n, BLEN) != '*'){
-		// 	std::cout << *rp;
-		// 	crc ^= *rp;
-		// 	if(rp - buf >= BLEN) 
-		// 		return 0;
-		// };
-		// std::cout << "\ncrc "  << std::hex << crc << "\n";
-		// while(getbyte(fd, buf,rp, &n, BLEN) != '\n'){
-		// 	std::cout << *rp;
-		// 	if(rp - buf >= BLEN) return 0;
-		// }
-		// std::cout << "\n";
-
 		//GNS Parser
-		while(getbyte(fd, buf,rp, &n, BLEN) != '$'){if(rp - buf >= BLEN) return 0;};
-		while(getbyte(fd, buf,rp, &n, BLEN) != '*'){ 
-			crc ^= *(rp-1);
-			std::cout << *(rp-1);
-		};
-		// unsigned char x[2] = {*rp, *(rp+1)};
-		// uint8_t res[1];
-		// hex_decode(x,2,res);
-		// long coco = strtol(rp,rp+1,2);
-		
-		// if (crc == res[1])
-			// ROS_INFO("successfully parced\n");
+		// while(getbyte(fd, buf,rp, &n, BLEN) != '$'){if(rp - buf >= BLEN) return 0;};
+		// while(getbyte(fd, buf,rp, &n, BLEN) != '*'){ 
+		// 	crc ^= *(rp-1);
+		// 	// std::cout << *(rp-1);
+		// };
+		// if (hex_decode(rp,2, &crc))
+		// 	ROS_INFO("successfully parced\n");
 		// else
-			// ROS_WARN("unsuccessfully parced\n");
-		std::cout << "\n" << (*rp) << *(rp+1);
-		// std::cout << "\n" << std::hex << crc;
-		// std::cout << "\n" << std::hex << res;
-		// std::bitset<8> x(*rp);
-		// std::bitset<8> y(*(rp+1));
-		// std::bitset<16> z(crc);
-		// std::cout << "\nBefo " << x << y << "\nCRC  " << z <<"\n\n";
-		
-		// switch(*rp){
-		// 	case ',' :
-		// 		count++;
-		// 		break;
-		// 	case '.' :
-		// 		break;
-		// 	default  :
-		// 		latitude += (*rp -'0') *divisor;
-		// }		
+		// 	ROS_WARN("unsuccessfully parced\n");
 
+
+
+		while(getbyte(fd, buf,rp, &n, BLEN) != '\n'){
+       		switch(state){
+       		   case START_WAIT:               // Waiting for start of message
+       		      if(*(rp-1) == '$')                         // Start character received...
+       		      {
+       		        //  head = 0;                     // reset the data buffer index...
+       		         state = RECEIVING;        // and start receiving data
+       		      }
+       		      break;
+
+       		   case RECEIVING:                   // Message Start received
+       		      	if(*(rp-1) == '*')                          // If end of message...
+       		      	   	state = MSG_RECEIVED;  // indicate we're done - don't process any more character until 
+       		      	else
+						crc ^= *(rp-1);
+       		        break;
+
+			  case MSG_RECEIVED:
+			  	if (hex_decode(rp,2, &crc)){
+					state = START_WAIT;
+				}					
+			 	else{
+					 state = START_WAIT;
+					 std::cout << "\n";
+				 }
+				break;
+       		} 
+  		} 		
 		// if(*rp == ',')
 		// 	divisor *= 10;
 		// if (divisor   == 10)   {latitude += (*rp -'0') *divisor;}
@@ -304,9 +301,8 @@ unsigned char *rp = &buf[BLEN];
 		// 	}
 		// 	std::cout << *rp; crc ^= *rp;
 		// }
-		// // std::cout << (int(longitude)+(longitude-int(longitude))*100/60) << "\n";
-		// // std::cout << 1/(ros::Time::now().toSec()-timenow) << "\n"; 
-		// // timenow = ros::Time::now().toSec();
+		// std::cout << (int(longitude)+(longitude-int(longitude))*100/60) << "\n";
+		
 		// do{std::cout << *rp; crc ^= *rp; if(rp - buf >= BLEN) return 0; }while(getbyte(fd, buf,rp, &n, BLEN) != '*');
 		// do{std::cout << *rp; if(rp - buf >= BLEN) return 0; }while(getbyte(fd, buf,rp, &n, BLEN) != '\n');
 
@@ -378,6 +374,7 @@ int main(int argc, char **argv)
 	static std::string portName_;
 	struct pollfd pfd[1];
 	int product_id, vendor_id, size, configurator = 0, confi;
+	int freq; 
 	bool isValid, configured;
 
 	pub_gps = n.advertise<geometry_msgs::Point32>("/gps_stream",1);
@@ -385,6 +382,7 @@ int main(int argc, char **argv)
 
 	pnh.param<int>("vend", vendor_id, 0x0403);
     pnh.param<int>("prod", product_id,0x6001);
+	pnh.param<int>("rate", freq,100);
 	std::vector<double> origin_geo_vector;
 	pnh.getParam("origin_geo",origin_geo_vector);
 
@@ -426,10 +424,10 @@ int main(int argc, char **argv)
 					break;
 
 				case  MSG :
-					for (int i = 0; i < GNS+1; i++){
+					for (int i = 0; i < GGA+1; i++){
 						ubx_cfg(pfd[0].fd, MSG, i);
 						int a = read_after_write<int,true>(&pfd[0],0);
-						if(a == 2 && i == GNS){
+						if(a == 2 && i == GGA){
 							configurator++;
 							continue;
 						}
@@ -441,7 +439,7 @@ int main(int argc, char **argv)
 					break;
 					
 					case  RATE :
-					ubx_cfg(pfd[0].fd,RATE,1); //configure UART port
+					ubx_cfg(pfd[0].fd,RATE,freq); //configure UART port
 					if(read_after_write<int,true>(&pfd[0],0) == 2){
 						configurator++;
 						continue;

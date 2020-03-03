@@ -19,7 +19,7 @@
 #include <geometry_msgs/Point32.h>
 
 enum general_configuration{PRT = 0, UART = 1, MSG = 2, RATE = 3, CFG = 4};
-enum messages_configutation{GGA = 0, GLL = 1, GSA = 2, GSV = 3, RMC = 4, VTG = 5, GNS = 6};
+enum messages_configutation{GNS = 0, GLL = 1, GSA = 2, GSV = 3, RMC = 4, VTG = 5,  GGA= 6};
 
 double latitude;
 double longitude;

@@ -1,11 +1,12 @@
 <launch>
 		<arg name="vend" default="1027"/>
 		<arg name="prod" default="24577"/>
-
+		<arg name="rate" default="100"/>
 
 	<node pkg="gps_target" name="target" type="gps_target_node" output="screen">
 		<param name="vend" value="$(arg vend)"/>
 		<param name="prod" value="$(arg prod)"/>
+		<param name="rate" value="$(arg rate)"/>
 		<rosparam param="origin_geo">[38.7319435, -9.1315461, 0]</rosparam>
 	</node>
 
