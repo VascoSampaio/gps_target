@@ -31,6 +31,25 @@ geographic_msgs::GeoPoint actual_coordinate_geo;
 ros::Publisher pub_gps;
 ros::Timer timer_;
 
+
+/* GNS-CFG*/
+struct gps_gns_payload{ 
+	unsigned char	    messageID[5];
+	int 	                     UTC;
+	double	              latitude;
+	unsigned char	          latDir;
+	double	             longitude;
+	unsigned short	       longDir;      
+	unsigned char modeIndicator[2];      
+	uint8_t     	           noSat;
+  uint8_t     	            HDOP;
+  double                  height;
+  double                 geoidal;
+  uint16_t             stationID;
+  unsigned char      checksum[2];
+} gps_gns;
+
+
     /* CFG-PRT*/
 struct ubx_payload_prt{ 
 	unsigned char	  portID;

@@ -1,5 +1,5 @@
 /*
- * Collect RTCM data and publish.
+ * Collect NMEA data and publish.
  *
  * Copyright 2018 Instituto Superior Tecnico
  *
@@ -102,17 +102,17 @@ static void ubx_cfg(int fd, int clas, int id){
 		 case  MSG :
 			ubx_cfg_msg.clas 		= 0XF0;
 		 	ubx_cfg_msg.rate 		= 0;
+			if(id == GNS){
+				ubx_cfg_msg.rate 	= 1;
+				ubx_cfg_msg.id   	= 0x0D;
+				std::cout << "Configurating MSG\n";
+			}
 		 	if(id == GGA) ubx_cfg_msg.id   	= 0x00;
 			if(id == GLL) ubx_cfg_msg.id   	= 0x01;
 			if(id == GSA) ubx_cfg_msg.id   	= 0x02;
 			if(id == GSV) ubx_cfg_msg.id   	= 0x03;
 			if(id == RMC) ubx_cfg_msg.id   	= 0x04;
 			if(id == VTG) ubx_cfg_msg.id  	= 0x05;
-			if(id == GNS){
-				ubx_cfg_msg.rate 	= 1;
-				ubx_cfg_msg.id   	= 0x0D;
-				std::cout << "Configurating MSG\n";
-			}
 
 			buf[3]                  = 0x01;
 			buf[4]                  = 3;
@@ -122,9 +122,9 @@ static void ubx_cfg(int fd, int clas, int id){
 
 		 case  RATE :
 			std::cout << "Configurating RATE\n";
-		 	ubx_cfg_rate.measRate      = 50; //Elapsed Time between messages
- 			ubx_cfg_rate.navRate       = 1;   //Number of elapsed measurments that trigger a navigation epoch
-			ubx_cfg_rate.timeRef       = 0;   //Time system to which measurements are aligned; 0 - UTC; 1 - GPS; 2- GLONASS
+		 	ubx_cfg_rate.measRate      = 1000; //Elapsed Time between messages
+ 			ubx_cfg_rate.navRate       = 1;  //Number of elapsed measurments that trigger a navigation epoch
+			ubx_cfg_rate.timeRef       = 0;  //Time system to which measurements are aligned; 0 - UTC; 1 - GPS; 2- GLONASS
 			buf[3]                     = 0x08;
 			buf[4]                     = 6;
 			write_size                 = 14;
@@ -154,9 +154,6 @@ static unsigned char getbyte(int fd, unsigned char rbuf[], unsigned char *&rp, u
 
     if ((rp - rbuf) >= *bufcnt) {/* buffer needs refill */        
         *bufcnt = read(fd, rbuf, size);
-		// for(int i=0;i<*bufcnt;i++)
-			// std::cout << (int)rbuf[i] << " ";
-		// std::cout << "\n";
         if (bufcnt <= 0) {
             return 0;
         }
@@ -170,13 +167,22 @@ static unsigned char getbyte(int fd, unsigned char rbuf[], unsigned char *&rp, u
     return *rp++;
 }
 
+uint8_t* hex_decode(const unsigned char *in, size_t len,uint8_t *out){
+        unsigned int i, t, hn, ln;
+        for (t = 0,i = 0; i < len; i+=2,++t) {
+                hn = in[i] > '9' ? in[i] - 'A' + 10 : in[i] - '0';
+                ln = in[i+1] > '9' ? in[i+1] - 'A' + 10 : in[i+1] - '0';
+                out[t] = (hn << 4 ) | ln;
+        }
+        return out;
+}
+
 template <typename T, bool space>
 static bool readwrite(int fd){
 
-	mavros_msgs::RTCM rtcm;
-	uint8_t n = 0, BLEN = 100, MLEN = 10;
-	unsigned char buf[BLEN], msg_class, id, length, sync, mesg[MLEN-2];
-	unsigned char *rp = &buf[BLEN];
+uint8_t n = 0, BLEN = 100, MLEN = 10;
+unsigned char buf[BLEN], msg_class, id, length, sync, mesg[MLEN-2];
+unsigned char *rp = &buf[BLEN];
 	
 	// std::cout << "\nrp is "   <<  (int)*rp   <<"\n";
 	// std::cout << "buf is "  <<  &buf <<"\n";	
@@ -184,7 +190,6 @@ static bool readwrite(int fd){
 
 	if(space){
 	    	while (getbyte(fd, buf,rp, &n, BLEN) != 0xB5){if(rp - buf >= BLEN) return 0;} /* hunt for 1st sync */
-			// std::cout << "FOUND\n";
 		retry_sync:
     		if ((sync = getbyte(fd, buf,rp, &n, BLEN)) != 0x62) {
 				if (sync == 0xB5){
@@ -192,12 +197,8 @@ static bool readwrite(int fd){
 					goto retry_sync;
 				}            		
         		else    
-            		return 0;    /* restart sync hunt */
+            		return 0; /* restart sync hunt */
 	    	}
-			// std::cout << "FOUND AGAIN\n";
-
-			// std::cout << "\n\nbuf is "  <<  &buf <<"\n\n";
-
 			for(uint8_t i=0; i <MLEN-2;i++)
 				mesg[i] = getbyte(fd, buf,rp, &n, BLEN);		
 
@@ -218,44 +219,100 @@ static bool readwrite(int fd){
 	}
 	else{
 		n = 70;
-
-		double divisor = 10, 
+		double divisor = 0.1, 
 		latitude = 0; 
 		longitude = 0;
+		uint8_t crc = 0;
  
 		// while(getbyte(fd, buf,rp, &n, BLEN) != '$'){if(rp - buf >= BLEN) return 0;}
 		// while(getbyte(fd, buf,rp, &n, BLEN) != '*'){
-			// std::cout << *rp;
-			// if(rp - buf >= BLEN) return 0;
-		// }			  
+		// 	std::cout << *rp;
+		// 	crc ^= *rp;
+		// 	if(rp - buf >= BLEN) 
+		// 		return 0;
+		// };
+		// std::cout << "\ncrc "  << std::hex << crc << "\n";
+		// while(getbyte(fd, buf,rp, &n, BLEN) != '\n'){
+		// 	std::cout << *rp;
+		// 	if(rp - buf >= BLEN) return 0;
+		// }
 		// std::cout << "\n";
 
-		while(getbyte(fd, buf,rp, &n, BLEN) != '$'){if(rp - buf >= BLEN) return 0;}
-		while(getbyte(fd, buf,rp, &n, BLEN) != ','){}
-		while(getbyte(fd, buf,rp, &n, BLEN) != ','){if(rp - buf >= BLEN) return 0;}
-		do{
-			if(*rp != '.' && *rp != ','){
-				latitude += (*rp -'0') *divisor;
-				// std::cout << divisor << " " << *rp << "\n";
-				divisor /= 10;
-			}
-		}while(getbyte(fd, buf,rp, &n, BLEN) != ',');
-		std::cout << std::fixed;
-    	std::cout << std::setprecision(7);
-		std::cout << (int(latitude)+(latitude-int(latitude))*100/60) << ", ";
-// 
-		while(getbyte(fd, buf,rp, &n, BLEN) != ','){if(rp - buf >= BLEN) return 0;}
-		divisor = 100;
-		do{
-			if(*rp != '.' && *rp != ','){
-				longitude += (*rp -'0') *divisor;
-				divisor /= 10;
-			}
-		}while(getbyte(fd, buf,rp, &n, BLEN) != ',');
-		std::cout << (int(longitude)+(longitude-int(longitude))*100/60) << "\n";
-		std::cout << 1/(ros::Time::now().toSec()-timenow) << "\n"; 
-		timenow = ros::Time::now().toSec();
-		position_available = true;
+		//GNS Parser
+		while(getbyte(fd, buf,rp, &n, BLEN) != '$'){if(rp - buf >= BLEN) return 0;};
+		while(getbyte(fd, buf,rp, &n, BLEN) != '*'){ 
+			crc ^= *(rp-1);
+			std::cout << *(rp-1);
+		};
+		// unsigned char x[2] = {*rp, *(rp+1)};
+		// uint8_t res[1];
+		// hex_decode(x,2,res);
+		// long coco = strtol(rp,rp+1,2);
+		
+		// if (crc == res[1])
+			// ROS_INFO("successfully parced\n");
+		// else
+			// ROS_WARN("unsuccessfully parced\n");
+		std::cout << "\n" << (*rp) << *(rp+1);
+		// std::cout << "\n" << std::hex << crc;
+		// std::cout << "\n" << std::hex << res;
+		// std::bitset<8> x(*rp);
+		// std::bitset<8> y(*(rp+1));
+		// std::bitset<16> z(crc);
+		// std::cout << "\nBefo " << x << y << "\nCRC  " << z <<"\n\n";
+		
+		// switch(*rp){
+		// 	case ',' :
+		// 		count++;
+		// 		break;
+		// 	case '.' :
+		// 		break;
+		// 	default  :
+		// 		latitude += (*rp -'0') *divisor;
+		// }		
+
+		// if(*rp == ',')
+		// 	divisor *= 10;
+		// if (divisor   == 10)   {latitude += (*rp -'0') *divisor;}
+		// if (longitude ==  0)   {longitude += (*rp -'0') *divisor;}
+		// if (divisor <= 1000)   {latitude = (int(latitude)+(latitude-int(latitude))*100/60); longitude = (int(longitude)+(longitude-int(longitude))*100/60)}
+		// }
+
+		// while(getbyte(fd, buf,rp, &n, BLEN) != ',');{ std::cout << *rp; crc ^= *rp; if(rp - buf >= BLEN) return 0;}
+		// while(getbyte(fd, buf,rp, &n, BLEN) != ',');{ std::cout << *rp; crc ^= *rp; if(rp - buf >= BLEN) return 0;}
+		// while(getbyte(fd, buf,rp, &n, BLEN) != ','){
+		// 	if(*rp != '.' && *rp != ','){
+		// 		latitude += (*rp -'0') *divisor;
+		// 		// std::cout << divisor << " " << *rp << "\n";
+		// 		divisor /= 10;
+		// 	}
+		// std::cout << *rp; crc ^= *rp;
+		// }
+		// // std::cout << std::fixed;
+    	// // std::cout << std::setprecision(7);
+		// // std::cout << (int(latitude)+(latitude-int(latitude))*100/60) << ", ";
+
+		// do{std::cout << *rp; crc ^= *rp; if(rp - buf >= BLEN) return 0; }while(getbyte(fd, buf,rp, &n, BLEN) != ',');
+		// crc ^= *rp;
+
+		// //Longitude
+		// divisor = 100;
+		// while(getbyte(fd, buf,rp, &n, BLEN) != ','){
+		// 	if(*rp != '.'){
+		// 		longitude += (*rp -'0') *divisor;
+		// 		divisor /= 10;
+		// 	}
+		// 	std::cout << *rp; crc ^= *rp;
+		// }
+		// // std::cout << (int(longitude)+(longitude-int(longitude))*100/60) << "\n";
+		// // std::cout << 1/(ros::Time::now().toSec()-timenow) << "\n"; 
+		// // timenow = ros::Time::now().toSec();
+		// do{std::cout << *rp; crc ^= *rp; if(rp - buf >= BLEN) return 0; }while(getbyte(fd, buf,rp, &n, BLEN) != '*');
+		// do{std::cout << *rp; if(rp - buf >= BLEN) return 0; }while(getbyte(fd, buf,rp, &n, BLEN) != '\n');
+
+     	// std::cout << "crc " << std::hex << crc << "\n";
+
+		// position_available = true;
 	}
 	return true;
 }
@@ -270,7 +327,7 @@ uint8_t read_after_write(struct pollfd *pfd, double sleep_time){
 	sleep(sleep_time);
 	ros::spinOnce();
 	if (!poll(pfd, 1, 3000)) {
-		ROS_WARN("Read gps data timeout");
+		ROS_WARN("Read TIMEOUT");
 		return 0;
 	}
 	if (pfd->revents){
