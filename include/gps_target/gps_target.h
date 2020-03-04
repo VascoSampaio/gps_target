@@ -14,6 +14,7 @@
 #include <string>
 #include <iostream>
 #include <unistd.h>
+#include <csignal>
 
 #include <multidrone_kml_parser/geographic_to_cartesian.hpp>
 #include <geometry_msgs/Point32.h>
@@ -26,7 +27,8 @@ double longitude;
 double timenow;
 bool   position_available;
 char   gpsBuffer[80];
-char*  gpsPtr = gpsBuffer-1;
+char*  gpsPtr = gpsBuffer;
+struct pollfd pfd[1];
 
 geographic_msgs::GeoPoint origin_geo_;
 geographic_msgs::GeoPoint actual_coordinate_geo;
@@ -38,9 +40,9 @@ ros::Timer timer_;
 struct gps_gns_payload{ 
 	unsigned char	    messageID[5];
 	int 	                     UTC;
-	double	              latitude;
+	double	              latitude = 0;
 	unsigned char	          latDir;
-	double	             longitude;
+	double	             longitude = 0;
 	unsigned short	       longDir;      
 	unsigned char modeIndicator[2];      
 	uint8_t     	           noSat;

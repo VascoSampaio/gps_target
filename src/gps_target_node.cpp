@@ -8,6 +8,17 @@
 
 #include <gps_target/gps_target.h>
 
+bool hex_decode(const char *in, size_t len,char *out){
+        unsigned int i, t, hn, ln;
+        for (t = 0,i = 0; i < len; i+=2,++t) {
+                hn = in[i] > '9' ? in[i] - 'A' + 10 : in[i] - '0';
+                ln = in[i+1] > '9' ? in[i+1] - 'A' + 10 : in[i+1] - '0';
+                if(out[t] == (hn << 4 ) | ln);
+					return true;
+        }
+	return false;        
+}
+
 /*
  * Open serial port device TTY @ 57600.
  * Return the serial port file descriptor, or -1 on failure.
@@ -25,7 +36,7 @@ static int rtcm_open(const char *tty)
 	ioctl(fd, TIOCEXCL); //system call for exclusivity on the port. No other open to this file descriptor will be allowed
 
 	memset(&t, 0, sizeof t);
-	t.c_cc[VMIN] = 70;
+	t.c_cc[VMIN] = 80;
 	t.c_cflag = B38400 | CS8 | CREAD | CLOCAL | HUPCL; //baud rate, 8 bits, CREAD and CLOCAL are mandatory, let modem hang up
 
 	if (tcsetattr(fd, TCSANOW, &t)) { //set parameters, t, to file descriptor, fd, immediately, TCSANOW
@@ -139,13 +150,13 @@ static void ubx_cfg(int fd, int clas, int id){
 		ROS_ERROR("GPS: write error UBX_CFG");
 }
 
-void start_gps_stream(int fd){
-	char buf[1] = {'!'};
-	if(write(fd, buf, 1) != 1)
-		ROS_ERROR("FAILED TO START GPS STREAM");
-}
-
-static unsigned char getbyte(int fd, char rbuf[], char *&rp, uint8_t* bufcnt, uint8_t size)
+// void start_gps_stream(int fd){
+	// char buf[1] = {'!'};
+	// if(write(fd, buf, 1) != 1)
+		// ROS_ERROR("FAILED TO START GPS STREAM");
+// }
+ 
+static char getbyte(struct pollfd* pfd, char rbuf[], char *&rp, uint8_t* bufcnt, uint8_t size)
 {
 	// std::cout << "IN FUNCTION " <<"\n\n";
 	// std::cout << "rp is "   <<  (int)*rp   <<"\n";
@@ -153,200 +164,145 @@ static unsigned char getbyte(int fd, char rbuf[], char *&rp, uint8_t* bufcnt, ui
 	// std::cout << "rdiff is " <<  rp-rbuf <<"\n";		
 
     if ((rp - rbuf) >= *bufcnt) {/* buffer needs refill */        
-        *bufcnt = read(fd, rbuf, size);
-        if (bufcnt <= 0) {
-            return 0;
-        }
-        rp = rbuf;
+        if (!poll(pfd, 1, 3000)) {
+			ROS_WARN("Read TIMEOUT");
+			return false;
+		}
+		if (pfd->revents){
+			*bufcnt = read(pfd->fd, rbuf, size);
+        	if (*bufcnt <= 0 || *bufcnt > size ) {
+				return false;
+        	}
+			// std::cout << "\nshit is " << (int)*bufcnt <<"\n";
+        	rp = rbuf;
+		}
     }
 	// std::cout << "rp is "   <<   (int)*rp   <<"\n";
 	// std::cout << "rbuf is "  <<  &rbuf <<"\n";	
 	// std::cout << "rdiff is " <<  rp-rbuf <<"\n";
-	// std::cout << "bufcnt is " <<  (int)*bufcnt <<"\n";
 	// std::cout << "OUT OF FUNCTION " << "\n\n";
-    return *rp++;
+
+	return *rp++;
 }
 
-bool hex_decode(const char *in, size_t len,char *out){
-        unsigned int i, t, hn, ln;
-        for (t = 0,i = 0; i < len; i+=2,++t) {
-                hn = in[i] > '9' ? in[i] - 'A' + 10 : in[i] - '0';
-                ln = in[i+1] > '9' ? in[i+1] - 'A' + 10 : in[i+1] - '0';
-                if(out[t] == (hn << 4 ) | ln);
-					return true;
-        }
-	return false;        
-}
+static bool parseUBX(struct pollfd* pfd){
 
-template <typename T, bool space>
-static bool readwrite(int fd){
+	uint8_t n = 0, BLEN = 100, MLEN = 10;
+	char buf[BLEN], mesg[MLEN-2];
+	char *rp = &buf[BLEN], *sync;
+	int count=0;
 
-uint8_t n = 0, BLEN = 100, MLEN = 10;
-char buf[BLEN], msg_class, id, length, sync, mesg[MLEN-2];
-char *rp = &buf[BLEN];
-	
 	// std::cout << "\nrp is "   <<  (int)*rp   <<"\n";
 	// std::cout << "buf is "  <<  &buf <<"\n";	
-	// std::cout << "diff is " << rp - buf <<"\n\n";	
+	// std::cout << "diff is " << rp - buf <<"\n\n";
 
-	if(space){
-	    	while (getbyte(fd, buf,rp, &n, BLEN) != 0xB5){if(rp - buf >= BLEN) return 0;} /* hunt for 1st sync */
-		retry_sync:
-    		if ((sync = getbyte(fd, buf,rp, &n, BLEN)) != 0x62) {
-				if (sync == 0xB5){
-					std::cout << "Trying to resync" << std::hex << *rp << "\n";
-					goto retry_sync;
-				}            		
-        		else    
-            		return 0; /* restart sync hunt */
-	    	}
-			for(uint8_t i=0; i <MLEN-2;i++)
-				mesg[i] = getbyte(fd, buf,rp, &n, BLEN);		
+	//std::cout << "Trying to resync" << std::hex << *rp << "\n";
 
-			// std::cout << (int)mesg[0] << " is the msg_class\n";
-			// std::cout << (int)mesg[1] << " is the id\n";
-			// std::cout << (int)(mesg[2] |= mesg[3] <<8) << " is the length\n";
-			// std::cout << (int)mesg[4] << " is the Class ID of the Acknowledged Message \n";
-			// std::cout << (int)mesg[5] << " is the Message ID of the Acknowledged Message \n";
-			// std::cout << (int)mesg[6] << " is the Checksum A \n";
-			// std::cout << (int)mesg[7] << " is the Checksum B \n\n";
+	while (getbyte(pfd, buf,rp, &n, BLEN) && count++ < 80){
+		if (*rp == -75){ //0XB5 for unsigned char
+			sync = rp;
+			if(*++rp == 98){ //0X62 for unsigned char
+				*rp++;
+				for(; (rp-sync) <MLEN;)
+					getbyte(pfd, buf,rp, &n, BLEN);							
 
-		/* process the message */
-		// switch (class) {
-			// case 0x02:
-    			// if (id == 0x13) {
-				// }
-		// }
-	}
-	else{
-		n = 70;
-		double divisor = 0.1, 
-		latitude = 0; 
-		longitude = 0;
-		char crc = 0;
-		unsigned char c;
-		enum {START_WAIT, RECEIVING, MSG_RECEIVED} state = START_WAIT; 
- 
-		//GNS Parser
-		// while(getbyte(fd, buf,rp, &n, BLEN) != '$'){if(rp - buf >= BLEN) return 0;};
-		// while(getbyte(fd, buf,rp, &n, BLEN) != '*'){ 
-		// 	crc ^= *(rp-1);
-		// 	// std::cout << *(rp-1);
-		// };
-		// if (hex_decode(rp,2, &crc))
-		// 	ROS_INFO("successfully parced\n");
-		// else
-		// 	ROS_WARN("unsuccessfully parced\n");
-
-
-
-		while(getbyte(fd, buf,rp, &n, BLEN) != '\n'){
-       		switch(state){
-       		   case START_WAIT:               // Waiting for start of message
-       		      if(*(rp-1) == '$')                         // Start character received...
-       		      {
-       		        //  head = 0;                     // reset the data buffer index...
-       		         state = RECEIVING;        // and start receiving data
-       		      }
-       		      break;
-
-       		   case RECEIVING:                   // Message Start received
-       		      	if(*(rp-1) == '*')                          // If end of message...
-       		      	   	state = MSG_RECEIVED;  // indicate we're done - don't process any more character until 
-       		      	else
-						crc ^= *(rp-1);
-       		        break;
-
-			  case MSG_RECEIVED:
-			  	if (hex_decode(rp,2, &crc)){
-					state = START_WAIT;
-				}					
-			 	else{
-					 state = START_WAIT;
-					 std::cout << "\n";
-				 }
-				break;
-       		} 
-  		} 		
-		// if(*rp == ',')
-		// 	divisor *= 10;
-		// if (divisor   == 10)   {latitude += (*rp -'0') *divisor;}
-		// if (longitude ==  0)   {longitude += (*rp -'0') *divisor;}
-		// if (divisor <= 1000)   {latitude = (int(latitude)+(latitude-int(latitude))*100/60); longitude = (int(longitude)+(longitude-int(longitude))*100/60)}
-		// }
-
-		// while(getbyte(fd, buf,rp, &n, BLEN) != ',');{ std::cout << *rp; crc ^= *rp; if(rp - buf >= BLEN) return 0;}
-		// while(getbyte(fd, buf,rp, &n, BLEN) != ',');{ std::cout << *rp; crc ^= *rp; if(rp - buf >= BLEN) return 0;}
-		// while(getbyte(fd, buf,rp, &n, BLEN) != ','){
-		// 	if(*rp != '.' && *rp != ','){
-		// 		latitude += (*rp -'0') *divisor;
-		// 		// std::cout << divisor << " " << *rp << "\n";
-		// 		divisor /= 10;
-		// 	}
-		// std::cout << *rp; crc ^= *rp;
-		// }
-		// // std::cout << std::fixed;
-    	// // std::cout << std::setprecision(7);
-		// // std::cout << (int(latitude)+(latitude-int(latitude))*100/60) << ", ";
-
-		// do{std::cout << *rp; crc ^= *rp; if(rp - buf >= BLEN) return 0; }while(getbyte(fd, buf,rp, &n, BLEN) != ',');
-		// crc ^= *rp;
-
-		// //Longitude
-		// divisor = 100;
-		// while(getbyte(fd, buf,rp, &n, BLEN) != ','){
-		// 	if(*rp != '.'){
-		// 		longitude += (*rp -'0') *divisor;
-		// 		divisor /= 10;
-		// 	}
-		// 	std::cout << *rp; crc ^= *rp;
-		// }
-		// std::cout << (int(longitude)+(longitude-int(longitude))*100/60) << "\n";
-		
-		// do{std::cout << *rp; crc ^= *rp; if(rp - buf >= BLEN) return 0; }while(getbyte(fd, buf,rp, &n, BLEN) != '*');
-		// do{std::cout << *rp; if(rp - buf >= BLEN) return 0; }while(getbyte(fd, buf,rp, &n, BLEN) != '\n');
-
-     	// std::cout << "crc " << std::hex << crc << "\n";
-
-		// position_available = true;
-	}
-	return true;
-}
-
-/*
-Return 0 : time out 
-Return 1 : error parsing
-Return 2 : ok 
-*/
-template <typename T, bool space>
-uint8_t read_after_write(struct pollfd *pfd, double sleep_time){ 
-	sleep(sleep_time);
-	ros::spinOnce();
-	if (!poll(pfd, 1, 3000)) {
-		ROS_WARN("Read TIMEOUT");
-		return 0;
-	}
-	if (pfd->revents){
-		if(space){
-			if(!readwrite<T, true>(pfd->fd)){
-				ROS_WARN("GOT ERROR");
-				return 1;
-			}			
-		}
-		else{
-			if(!readwrite<T, false>(pfd->fd)){
-				ROS_WARN("GOT ERROR");
-				return 1;
+				// std::cout << (int)mesg[0] << " is the msg_class\n";
+				// std::cout << (int)mesg[1] << " is the id\n";
+				// std::cout << (int)(mesg[2] |= mesg[3] <<8) << " is the length\n";
+				// std::cout << (int)mesg[4] << " is the Class ID of the Acknowledged Message \n";
+				// std::cout << (int)mesg[5] << " is the Message ID of the Acknowledged Message \n";
+				// std::cout << (int)mesg[6] << " is the Checksum A \n";
+				// std::cout << (int)mesg[7] << " is the Checksum B \n\n";
+				return true;
 			}
-		}					
+			else
+				continue;
+		}            		
 	}
-	else {
-		ROS_WARN("No revents");
-		return 0;
-	}
-	return 2;
+	return false;
 }
 
+void parseNMEA(){
+	char *rp = &gpsBuffer[5];
+	double divisor = 10; 
+
+	while(*++rp != ',')
+		std::cout << *rp;
+
+	std::cout << "   ";
+	for(;*++rp != ',';){
+		if(*rp != '.' ){
+			gps_gns.latitude += (*rp -'0') *divisor;
+			std::cout << *rp -'0';
+			divisor /= 10;
+		}
+	}
+	std::cout << "\n";
+
+	// std::cout << std::fixed;
+    // std::cout << std::setprecision(7);
+	// std::cout << (int(latitude)+(latitude-int(latitude))*100/60) << "\n";
+	// do{std::cout << *rp; crc ^= *rp; if(rp - buf >= BLEN) return 0; }while(getbyte(fd, buf,rp, &n, BLEN) != ',');
+	// crc ^= *rp;
+	// //Longitude
+	// divisor = 100;
+	// while(getbyte(fd, buf,rp, &n, BLEN) != ','){
+	// 	if(*rp != '.'){
+	// 		longitude += (*rp -'0') *divisor;
+	// 		divisor /= 10;
+	// 	}
+	// 	std::cout << *rp; crc ^= *rp;
+	// }
+	// std::cout << (int(longitude)+(longitude-int(longitude))*100/60) << "\n";
+	
+	// do{std::cout << *rp; crc ^= *rp; if(rp - buf >= BLEN) return 0; }while(getbyte(fd, buf,rp, &n, BLEN) != '*');
+	// do{std::cout << *rp; if(rp - buf >= BLEN) return 0; }while(getbyte(fd, buf,rp, &n, BLEN) != '\n');
+ 	// std::cout << "crc " << std::hex << crc << "\n";
+	// position_available = true;
+}
+
+static bool getNMEA(struct pollfd* pfd){
+
+		uint8_t n = 0, BLEN = 80, MLEN = 10;
+		char buf[BLEN], msg_class, id, length, sync, mesg[MLEN-2];
+		char *rp = &buf[BLEN];
+		char crc  = 0;
+		enum {START_WAIT, RECEIVING, MSG_RECEIVED} state = START_WAIT; 
+
+		while(getbyte(pfd, buf,rp, &n, BLEN)){
+       		switch(state){
+       		   	case START_WAIT:               		 // Waiting for start of message
+					if(*(rp-1) == '$'){
+						gpsPtr = gpsBuffer;		// Start character received...
+						state = RECEIVING;
+					}                        	 // and start receiving data
+       		      	break;
+       		   	case RECEIVING:                       // Message Start received
+       		      	if(*(rp-1) == '*'){              // If end of message...
+						if (hex_decode(rp,2, &crc)){
+							state = MSG_RECEIVED;    // indicate we're done - don't process any more character until														  
+							break;
+						}
+						state  = START_WAIT;
+						gpsPtr = gpsBuffer;
+						return false;
+					}                             		      	 
+       		      	else{
+						*(gpsPtr++) = *(rp-1); 
+						crc ^= *(rp-1);
+						// std::cout << gpsBuffer[gpsPtr-1-gpsBuffer];
+					}
+       		        break;
+			  	case MSG_RECEIVED:
+				 	//  std::cout << "   " << (int)(gpsPtr-gpsBuffer) << "\n";
+				  	parseNMEA();
+					state  = START_WAIT;
+					break;					
+			}
+       	}  	
+	return false;
+}
+ 
 void main_with_exceptions(std::string &port_name, int vid, int pid){	
     libusbp::device device = libusbp::find_device_with_vid_pid(vid, pid);
     if (device){
@@ -366,23 +322,30 @@ void timerCallback(const ros::TimerEvent&){
 	position_available = false;
 }
 
+void signalHandler( int signum ) {
+	close(pfd[0].fd);
+   std::exit(signum);  
+}
+
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "rtkbasestation");
 	ros::NodeHandle n;
 	ros::NodeHandle pnh("~");
 	static std::string portName_;
-	struct pollfd pfd[1];
 	int product_id, vendor_id, size, configurator = 0, confi;
 	int freq; 
 	bool isValid, configured;
 
-	pub_gps = n.advertise<geometry_msgs::Point32>("/gps_stream",1);
+	std::signal(SIGINT, signalHandler);
+
+	pub_gps = n.advertise<geometry_msgs::Point32>("/gps_message",1);
 	ros::Timer timer_  = n.createTimer(ros::Duration(1/30), timerCallback); //33Hz
 
 	pnh.param<int>("vend", vendor_id, 0x0403);
     pnh.param<int>("prod", product_id,0x6001);
 	pnh.param<int>("rate", freq,100);
+	pnh.param<int>("number", configurator,0);
 	std::vector<double> origin_geo_vector;
 	pnh.getParam("origin_geo",origin_geo_vector);
 
@@ -410,37 +373,36 @@ int main(int argc, char **argv)
  			switch(configurator){
 			 	case  PRT :
 			 		ubx_cfg(pfd[0].fd, PRT, 1);       //configure USB port
- 					if(read_after_write<int,true>(&pfd[0],0) == 2){
+ 					//sleep(1.0);
+					 if(parseUBX(pfd)){
 						configurator++;
 						continue;
 					}
 					break;
 				 case  UART :
 					ubx_cfg(pfd[0].fd,UART,1); 		//configure UART port
-					if(read_after_write<int,true>(&pfd[0],0) == 2){
+					 if(parseUBX(pfd)){
 						configurator++;
 						continue;
 					}
 					break;
 
 				case  MSG :
-					for (int i = 0; i < GGA+1; i++){
-						ubx_cfg(pfd[0].fd, MSG, i);
-						int a = read_after_write<int,true>(&pfd[0],0);
-						if(a == 2 && i == GGA){
-							configurator++;
-							continue;
-						}
-						else if (a == 1 || a == 0) {
-							i--;
-							continue;
+					for (int i = 0; i < GGA+1;){
+						ubx_cfg(pfd[0].fd, MSG, i); 
+						if(parseUBX(pfd)){ 
+							if (i == GGA){
+								configurator++;
+								break;
+							}
+							i++;
 						}
 					}
 					break;
 					
 					case  RATE :
 					ubx_cfg(pfd[0].fd,RATE,freq); //configure UART port
-					if(read_after_write<int,true>(&pfd[0],0) == 2){
+					if(parseUBX(pfd)){
 						configurator++;
 						continue;
 					}
@@ -453,7 +415,8 @@ int main(int argc, char **argv)
 					isValid      = false;
 					break;
 
-				 default : 		
+				 default : 	
+					std::cout << "DEFAULTED\n";	
 					isValid     = false;
 					configured  = false;
 					break;
@@ -461,8 +424,8 @@ int main(int argc, char **argv)
 		}
 		if (configured){
 			while(ros::ok()) {
- 				if(!read_after_write<unsigned char, false>(&pfd[0],0)){
-					 isValid      = true;
+ 				if(!getNMEA(pfd)){
+					 isValid = true;
 					 break;
 				 } 					
   	 		}
