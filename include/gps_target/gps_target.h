@@ -25,6 +25,8 @@ double latitude;
 double longitude;
 double timenow;
 bool   position_available;
+char   gpsBuffer[80];
+char*  gpsPtr = gpsBuffer-1;
 
 geographic_msgs::GeoPoint origin_geo_;
 geographic_msgs::GeoPoint actual_coordinate_geo;
@@ -32,7 +34,7 @@ ros::Publisher pub_gps;
 ros::Timer timer_;
 
 
-/* GNS-CFG*/
+/* GNS-GPS*/
 struct gps_gns_payload{ 
 	unsigned char	    messageID[5];
 	int 	                     UTC;
