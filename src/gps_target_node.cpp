@@ -64,37 +64,39 @@ static void ubx_checksum(const unsigned char *data, unsigned len, unsigned char 
 	ck[1] = ck_b;
 }
 
-void print_write(unsigned char *buf, unsigned char length){
-	std::cout << "Write is " << (int)length << " and data is \n";
-	for (unsigned char *end = buf + length; buf < end; buf++)
-		std::cout << int(*buf) << " ";
+void write_for_checking(unsigned char *buf){
+	message_checksum[4]  = buf[2];
+	message_checksum[5] = buf[3];
+	ubx_checksum(message_checksum, 6, message_checksum+6);
+
+	for (int i=0; i < sizeof(message_checksum); i++)
+		std::cout << (int)message_checksum[i] << " ";
 	std::cout << "\n";
 }
 
-static void ubx_cfg(int fd, int clas, int id){
+static void ubx_cfg(int fd, int clas, int& id){
 	uint8_t write_size;
-	unsigned char buf[28];
+	unsigned char buf[60];
 	buf[0] = 0xb5; /*Header sync1*/
 	buf[1] = 0x62; /*Header sync2*/
 	buf[2] = 0x06; /*class ID: CFG*/
 	buf[5] = 0;    /*lenght MSB*/
-	
 	switch (clas){
 		case  PRT :
-			std::cout << "Configurating Port\n";
+			if (id == clas){ std::cout << "Configurating Port\n"; id++;} 
 			ubx_cfg_prt.portID         = 3; /*USB*/
 			ubx_cfg_prt.txReady        = 0x00;
 			ubx_cfg_prt.inProtoMask    = 0x01; /*UBX*/
 			ubx_cfg_prt.outProtoMask   = 0x03; 
 			buf[3]                     = 0x00;
-			buf[4]                     = 20;
-			write_size                 = 28;
+			buf[4]                     = sizeof(ubx_cfg_prt);
+			write_size              = buf[4]+8;
 			memmove(buf + 6, &ubx_cfg_prt, write_size-2);
 			break;
 
-		 case UART : 
-			std::cout << "Configurating UART\n";
-		 	ubx_cfg_uart.portID        = 1;     //UART1
+		 case UART :
+			if (id == clas){ std::cout << "Configurating UART\n"; id++;} 
+			ubx_cfg_uart.portID        = 1;     //UART1
 		 	ubx_cfg_uart.reserved1	   = 0;		
 		 	ubx_cfg_uart.txReady       = 0x00;  //Disabled;
 		 	ubx_cfg_uart.mode[0]       = 0xC0;  //No Parity, 8 bit, 1 stop bit;
@@ -102,49 +104,63 @@ static void ubx_cfg(int fd, int clas, int id){
 		 	ubx_cfg_uart.mode[2]       = 0x00;     
 		 	ubx_cfg_uart.mode[3]       = 0x00;     	
 		 	ubx_cfg_uart.baudrate      = 38400;
-		 	ubx_cfg_uart.inProtoMask   = 0x01;  /*UBX*/
+		 	ubx_cfg_uart.inProtoMask   = 0x21;  /*UBX and RTCM3*/
 		 	ubx_cfg_uart.outProtoMask  = 0x03;  /*UBX and NMEA*/
 			buf[3]                     = 0x00;
-			buf[4]                     = 20;
-			write_size                 = 28;
+			buf[4]                     = sizeof(ubx_cfg_uart);
+			write_size             	   = buf[4]+8;
 			memmove(buf + 6, &ubx_cfg_uart, write_size-2);
 			break;
 
-		 case  MSG :
-			ubx_cfg_msg.clas 		= 0XF0;
-		 	ubx_cfg_msg.rate 		= 0;
-			if(id == GNS){
-				ubx_cfg_msg.rate 	= 1;
-				ubx_cfg_msg.id   	= 0x0D;
-				std::cout << "Configurating MSG\n";
-			}
-		 	if(id == GGA) ubx_cfg_msg.id   	= 0x00;
-			if(id == GLL) ubx_cfg_msg.id   	= 0x01;
-			if(id == GSA) ubx_cfg_msg.id   	= 0x02;
-			if(id == GSV) ubx_cfg_msg.id   	= 0x03;
-			if(id == RMC) ubx_cfg_msg.id   	= 0x04;
-			if(id == VTG) ubx_cfg_msg.id  	= 0x05;
+		case  DGNSS :
+			if (id == clas){ std::cout << "Configurating DGNSS\n"; id++;} 
+			ubx_cfg_dgnss.dgnssMode    = 3; /*FIX mode*/
+			buf[3]                     = 0x70;
+			buf[4]                     = sizeof(ubx_cfg_dgnss);
+			write_size                 = buf[4]+8;
 
-			buf[3]                  = 0x01;
-			buf[4]                  = 3;
-			write_size              = 11;
-			memmove(buf + 6, &ubx_cfg_msg, write_size-2);
+			memmove(buf + 6, &ubx_cfg_prt, write_size-2);
 			break;
 
 		 case  RATE :
-			std::cout << "Configurating RATE\n";
+			if (id == clas){ std::cout << "Configurating RATE\n"; id++;}
 		 	ubx_cfg_rate.measRate      = id; //Elapsed Time between messages
  			ubx_cfg_rate.navRate       = 1;  //Number of elapsed measurments that trigger a navigation epoch
 			ubx_cfg_rate.timeRef       = 0;  //Time system to which measurements are aligned; 0 - UTC; 1 - GPS; 2- GLONASS
 			buf[3]                     = 0x08;
-			buf[4]                     = 6;
-			write_size                 = 14;
+			buf[4]                     = sizeof(ubx_cfg_rate);
+			write_size                 = buf[4]+8;
 			memmove(buf + 6, &ubx_cfg_rate, write_size-2);
+			break;
+		
+		case  NAV :
+			if (id == clas){ std::cout << "Configurating NAV\n"; id++;}
+		 	ubx_cfg_nav.dgnssTimeout   = 2;
+			buf[3]                     = 0x24;
+			buf[4]                     = sizeof(ubx_cfg_nav);
+			write_size                 = buf[4]+8;
+			memmove(buf + 6, &ubx_cfg_rate, write_size-2);
+			break;
+
+		case  MSG : 
+			ubx_cfg_msg.clas 		= 0XF0;
+			if(id == GNS) {ubx_cfg_msg.id   	= 0x0D; ubx_cfg_msg.rate 	= 0;std::cout << "Configurating MSG";}
+		 	if(id == GGA) {ubx_cfg_msg.id   	= 0x00; ubx_cfg_msg.rate 	= 1;std::cout << "\n";} //std::cout << " GGA\n";
+			if(id == GLL) {ubx_cfg_msg.id   	= 0x01; ubx_cfg_msg.rate 	= 0;} //std::cout << " GLL\n";
+			if(id == GSA) {ubx_cfg_msg.id   	= 0x02; ubx_cfg_msg.rate 	= 0;} //std::cout << " GSA\n";
+			if(id == GSV) {ubx_cfg_msg.id   	= 0x03; ubx_cfg_msg.rate 	= 0;} //std::cout << " GSV\n";
+			if(id == RMC) {ubx_cfg_msg.id   	= 0x04; ubx_cfg_msg.rate 	= 0;} //std::cout << " RMC\n";
+			if(id == VTG) {ubx_cfg_msg.id  		= 0x05; ubx_cfg_msg.rate 	= 0;} //std::cout << " VTG\n";
+
+			buf[3]                  = 0x01;
+			buf[4]                  = sizeof(ubx_cfg_msg);
+			write_size              = buf[4]+8;
+			memmove(buf + 6, &ubx_cfg_msg, write_size-2);
 			break; 
 	}
 
 	 ubx_checksum(buf + 2, write_size-4, buf + write_size - 2);	
-	//  print_write(buf,write_size);
+	 write_for_checking(buf);
 	 
 	 if(write(fd, buf, write_size) != write_size)
 		ROS_ERROR("GPS: write error UBX_CFG");
@@ -156,7 +172,7 @@ static void ubx_cfg(int fd, int clas, int id){
 		// ROS_ERROR("FAILED TO START GPS STREAM");
 // }
  
-static char getbyte(struct pollfd* pfd, char rbuf[], char *&rp, uint8_t* bufcnt, uint8_t size)
+static char getbyte(struct pollfd* pf, char rbuf[], char *&rp, uint8_t* bufcnt, uint8_t size)
 {
 	// std::cout << "IN FUNCTION " <<"\n\n";
 	// std::cout << "rp is "   <<  (int)*rp   <<"\n";
@@ -164,12 +180,12 @@ static char getbyte(struct pollfd* pfd, char rbuf[], char *&rp, uint8_t* bufcnt,
 	// std::cout << "rdiff is " <<  rp-rbuf <<"\n";		
 
     if ((rp - rbuf) >= *bufcnt) {/* buffer needs refill */        
-        if (!poll(pfd, 1, 3000)) {
+        if (!poll(pf, 1, 3000)) {
 			ROS_WARN("Read TIMEOUT");
 			return false;
 		}
 		if (pfd->revents){
-			*bufcnt = read(pfd->fd, rbuf, size);
+			*bufcnt = read(pf->fd, rbuf, size);
         	if (*bufcnt <= 0 || *bufcnt > size ) {
 				return false;
         	}
@@ -185,7 +201,7 @@ static char getbyte(struct pollfd* pfd, char rbuf[], char *&rp, uint8_t* bufcnt,
 	return *rp++;
 }
 
-static bool parseUBX(struct pollfd* pfd){
+static bool parseUBX(struct pollfd* pf){
 
 	uint8_t n = 0, BLEN = 100, MLEN = 10;
 	char buf[BLEN], mesg[MLEN-2];
@@ -198,13 +214,15 @@ static bool parseUBX(struct pollfd* pfd){
 
 	//std::cout << "Trying to resync" << std::hex << *rp << "\n";
 
-	while (getbyte(pfd, buf,rp, &n, BLEN) && count++ < 80){
+	while (getbyte(pf, buf,rp, &n, BLEN) && (rp - buf) != n){
 		if (*rp == -75){ //0XB5 for unsigned char
 			sync = rp;
 			if(*++rp == 98){ //0X62 for unsigned char
 				*rp++;
-				for(; (rp-sync) <MLEN;)
-					getbyte(pfd, buf,rp, &n, BLEN);							
+				for(; (rp-sync) <MLEN;){
+					if(getbyte(pf, buf,rp, &n, BLEN) == message_checksum[rp-sync]);
+					std::cout << (int)*rp<<"\n";
+				}							
 
 				// std::cout << (int)mesg[0] << " is the msg_class\n";
 				// std::cout << (int)mesg[1] << " is the id\n";
@@ -224,44 +242,52 @@ static bool parseUBX(struct pollfd* pfd){
 
 void parseNMEA(){
 	char *rp = &gpsBuffer[5];
-	double divisor = 10; 
+	double divisor = 10;
+	gps_gns.latitude = gps_gns.longitude = 0; 
 
-	while(*++rp != ',')
-		std::cout << *rp;
+	while(*++rp != ','){}
+		// std::cout << *rp;
 
-	std::cout << "   ";
+	// std::cout << "\n";
 	for(;*++rp != ',';){
 		if(*rp != '.' ){
 			gps_gns.latitude += (*rp -'0') *divisor;
-			std::cout << *rp -'0';
+			// std::cout << *rp -'0';
 			divisor /= 10;
 		}
 	}
-	std::cout << "\n";
+	gps_gns.latitude = (int(gps_gns.latitude)+(gps_gns.latitude-int(gps_gns.latitude))*100/60); 
+	// std::cout << "\n";
+	rp +=2; divisor=100;
+	for(;*++rp != ',';){
+		if(*rp != '.' ){
+			gps_gns.longitude += (*rp -'0') *divisor;
+			// std::cout << *rp -'0';
+			divisor /= 10;
+		}
+	}
+	// std::cout << "\n";
+	if (*++rp == 'W')
+		gps_gns.longitude = -(int(gps_gns.longitude)+(gps_gns.longitude-int(gps_gns.longitude))*100/60);
+	else 
+		gps_gns.longitude = (int(gps_gns.longitude)+(gps_gns.longitude-int(gps_gns.longitude))*100/60);
 
+
+	actual_coordinate_geo.latitude  = gps_gns.latitude;
+	actual_coordinate_geo.longitude = gps_gns.longitude;
+	actual_coordinate_geo.altitude  = 0;
+	geometry_msgs::Point32 target_pose = multidrone::geographic_to_cartesian(actual_coordinate_geo, origin_geo_);
+	pub_gps.publish(target_pose);
+	ros::spinOnce();
+	
+	// std::cout << 1/(ros::Time::now().toSec() - timenow) << "\n";  
+	// timenow = ros::Time::now().toSec();
 	// std::cout << std::fixed;
     // std::cout << std::setprecision(7);
-	// std::cout << (int(latitude)+(latitude-int(latitude))*100/60) << "\n";
-	// do{std::cout << *rp; crc ^= *rp; if(rp - buf >= BLEN) return 0; }while(getbyte(fd, buf,rp, &n, BLEN) != ',');
-	// crc ^= *rp;
-	// //Longitude
-	// divisor = 100;
-	// while(getbyte(fd, buf,rp, &n, BLEN) != ','){
-	// 	if(*rp != '.'){
-	// 		longitude += (*rp -'0') *divisor;
-	// 		divisor /= 10;
-	// 	}
-	// 	std::cout << *rp; crc ^= *rp;
-	// }
-	// std::cout << (int(longitude)+(longitude-int(longitude))*100/60) << "\n";
-	
-	// do{std::cout << *rp; crc ^= *rp; if(rp - buf >= BLEN) return 0; }while(getbyte(fd, buf,rp, &n, BLEN) != '*');
-	// do{std::cout << *rp; if(rp - buf >= BLEN) return 0; }while(getbyte(fd, buf,rp, &n, BLEN) != '\n');
- 	// std::cout << "crc " << std::hex << crc << "\n";
-	// position_available = true;
+	// std::cout << (int(gps_gns.latitude)+(gps_gns.latitude-int(gps_gns.latitude))*100/60) << ", " << (int(gps_gns.latitude)+(gps_gns.latitude-int(gps_gns.latitude))*100/60) << "\n";
 }
 
-static bool getNMEA(struct pollfd* pfd){
+static bool getNMEA(struct pollfd* pf){
 
 		uint8_t n = 0, BLEN = 80, MLEN = 10;
 		char buf[BLEN], msg_class, id, length, sync, mesg[MLEN-2];
@@ -269,7 +295,7 @@ static bool getNMEA(struct pollfd* pfd){
 		char crc  = 0;
 		enum {START_WAIT, RECEIVING, MSG_RECEIVED} state = START_WAIT; 
 
-		while(getbyte(pfd, buf,rp, &n, BLEN)){
+		while(getbyte(pf, buf,rp, &n, BLEN)){
        		switch(state){
        		   	case START_WAIT:               		 // Waiting for start of message
 					if(*(rp-1) == '$'){
@@ -290,11 +316,12 @@ static bool getNMEA(struct pollfd* pfd){
        		      	else{
 						*(gpsPtr++) = *(rp-1); 
 						crc ^= *(rp-1);
-						// std::cout << gpsBuffer[gpsPtr-1-gpsBuffer];
+						std::cout << gpsBuffer[gpsPtr-1-gpsBuffer];
+						ros::spinOnce();
 					}
        		        break;
 			  	case MSG_RECEIVED:
-				 	//  std::cout << "   " << (int)(gpsPtr-gpsBuffer) << "\n";
+				 	std::cout << "   " << (int)(gpsPtr-gpsBuffer) << "\n";
 				  	parseNMEA();
 					state  = START_WAIT;
 					break;					
@@ -311,41 +338,41 @@ void main_with_exceptions(std::string &port_name, int vid, int pid){
 		}
 }
 
-void timerCallback(const ros::TimerEvent&){ 
-	if(position_available){
-		actual_coordinate_geo.latitude = latitude;
-		actual_coordinate_geo.longitude = longitude;
-		actual_coordinate_geo.altitude = 0;
-		geometry_msgs::Point32 target_pose = multidrone::geographic_to_cartesian(actual_coordinate_geo, origin_geo_);
-		pub_gps.publish(target_pose);
-	}
-	position_available = false;
+void rtcm_streamer(const mavros_msgs::RTCM::ConstPtr& _msg, struct pollfd* pf){
+	char puf[230];
+ 
+	memmove(puf, &_msg->data, _msg->data.size());
+	// for(int i=0; i <_msg->data.size();i++)
+		// std::cout << (int)_msg->data[i]<< " ";
+		// std::cout << "\n";
+	if(write(pf[0].fd, puf, _msg->data.size()) != _msg->data.size())
+		ROS_ERROR("RTCM: data not written");
 }
 
 void signalHandler( int signum ) {
-	close(pfd[0].fd);
+   close(pfd[0].fd);
    std::exit(signum);  
 }
 
 int main(int argc, char **argv)
 {
-	ros::init(argc, argv, "rtkbasestation");
+	ros::init(argc, argv, "gps_target");
 	ros::NodeHandle n;
 	ros::NodeHandle pnh("~");
 	static std::string portName_;
-	int product_id, vendor_id, size, configurator = 0, confi;
+	int product_id, vendor_id, size;
 	int freq; 
-	bool isValid, configured;
+	bool configured = false;
 
 	std::signal(SIGINT, signalHandler);
 
-	pub_gps = n.advertise<geometry_msgs::Point32>("/gps_message",1);
-	ros::Timer timer_  = n.createTimer(ros::Duration(1/30), timerCallback); //33Hz
+	pub_gps  = n.advertise<geometry_msgs::Point32>("/gps_message",1);
 
 	pnh.param<int>("vend", vendor_id, 0x0403);
     pnh.param<int>("prod", product_id,0x6001);
 	pnh.param<int>("rate", freq,100);
-	pnh.param<int>("number", configurator,0);
+	// pnh.param<int>("number", configurator,0);
+	pnh.param<bool>("config", configured, false);
 	std::vector<double> origin_geo_vector;
 	pnh.getParam("origin_geo",origin_geo_vector);
 
@@ -355,9 +382,8 @@ int main(int argc, char **argv)
 
 	pfd[0].events = POLLIN;
 	timenow = ros::Time::now().toSec();
-
+	// std::cout << sizeof(signed int) << "\n";
   	while (ros::ok()) {
-		ros::spinOnce();
 		main_with_exceptions(portName_, vendor_id, product_id);
 		pfd[0].fd = rtcm_open(portName_.c_str());
 
@@ -369,69 +395,36 @@ int main(int argc, char **argv)
 		else
 		ROS_INFO("Successfull %s", portName_.c_str());
 	
-		while (isValid && ros::ok()) {
- 			switch(configurator){
-			 	case  PRT :
-			 		ubx_cfg(pfd[0].fd, PRT, 1);       //configure USB port
- 					//sleep(1.0);
-					 if(parseUBX(pfd)){
-						configurator++;
-						continue;
-					}
-					break;
-				 case  UART :
-					ubx_cfg(pfd[0].fd,UART,1); 		//configure UART port
-					 if(parseUBX(pfd)){
-						configurator++;
-						continue;
-					}
-					break;
-
-				case  MSG :
-					for (int i = 0; i < GGA+1;){
-						ubx_cfg(pfd[0].fd, MSG, i); 
+		if (!configured){
+			int i=0, b = 0;
+			for(; i != CFG;){
+				if(i!=MSG){
+					ubx_cfg(pfd[0].fd, i, b);
+					if(parseUBX(pfd))
+						i++;
+				}
+				else{
+					for (int a = 0; a < GGA+1;){
+						ubx_cfg(pfd[0].fd, i, a); 
 						if(parseUBX(pfd)){ 
-							if (i == GGA){
-								configurator++;
-								break;
-							}
-							i++;
+							if (a == GGA)
+								i++;
+							a++;
 						}
 					}
-					break;
-					
-					case  RATE :
-					ubx_cfg(pfd[0].fd,RATE,freq); //configure UART port
-					if(parseUBX(pfd)){
-						configurator++;
-						continue;
-					}
-					break;		
-
-				 case CFG :
-				 	std::cout << "CONFIGURED\n";
-					configured   = true;
-					configurator = PRT;
-					isValid      = false;
-					break;
-
-				 default : 	
-					std::cout << "DEFAULTED\n";	
-					isValid     = false;
-					configured  = false;
-					break;
+				}
 			}
-		}
-		if (configured){
+			ROS_INFO("CONFIGURED");
+			configured = true;
+		} else{
+			sub_rtcm = n.subscribe<mavros_msgs::RTCM>("/rtcm_stream",2, std::bind(rtcm_streamer, std::placeholders::_1, pfd));
 			while(ros::ok()) {
  				if(!getNMEA(pfd)){
-					 isValid = true;
 					 break;
 				 } 					
   	 		}
 		}
 		close(pfd[0].fd);
 	}
-
 	return 0;
-}
+}		
