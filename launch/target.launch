@@ -9,7 +9,7 @@
 		<param name="vend" value="$(arg vend)"/>
 		<param name="prod" value="$(arg prod)"/>
 		<param name="rate" value="$(arg rate)"/>
-		<!-- <param name="number" value="$(arg number)"/> -->
+		<param name="config" value="$(arg config)"/>
 		<rosparam param="origin_geo">[38.7319435, -9.1315461, 0]</rosparam>
 	</node>
 
