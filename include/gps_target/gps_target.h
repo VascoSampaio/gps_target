@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <csignal>
 #include<map>
+#include "boost/variant.hpp"
 
 #include <multidrone_kml_parser/geographic_to_cartesian.hpp>
 #include <geometry_msgs/Point32.h>
@@ -30,9 +31,9 @@ char*           gpsPtr = gpsBuffer;
 struct gps_gns_payload{ 
   unsigned char	 messageID[5];
   int 	         UTC;
-  double	     latitude = 0;
+  double	       latitude = 0;
   unsigned char	 latDir;
-  double	     longitude = 0;
+  double	       longitude = 0;
   unsigned short longDir;      
   unsigned char  modeIndicator[2];      
   uint8_t     	 noSat;
@@ -43,6 +44,7 @@ struct gps_gns_payload{
   unsigned char  checksum[2];
 } gps_gns;
 
+
 unsigned char   message_checksum[8]={5,1,2,0,0,0,0,0};
 struct pollfd   pfd[1];
 
@@ -51,14 +53,23 @@ geographic_msgs::GeoPoint actual_coordinate_geo;
 ros::Publisher            pub_gps;
 ros::Subscriber           sub_rtcm;
 
-template <class T> struct Configurations
-      {
-          int         keyValue;
-          T           idValue;
-          std::string config;
-      };
+// class MyFieldInterface{
+  // public:
+  // int m_Size; // of course use appropriate access level in the real code...
+  //  ~MyFieldInterface() = default;   
+// };
 
-// static void ubx_cfg(int fd, Configurations<class T>* configuration);
-// template<> std::map<int,Configurations*<typename N>>;
+// template <class T> 
+struct ubx_payload_valset{ /*: public MyFieldInterface {*/
+public: 
+  int                                    keyValue;
+  std::string                                item;
+  boost::variant<unsigned char,uint16_t>  idValue;  
+};
+
+static void ubx_checksum(const unsigned char *data, unsigned len, unsigned char ck[2]);
+void write_for_checking(unsigned char *buf);
+void ubx_cfg(int fd, ubx_payload_valset* valset);
+std::map<int,ubx_payload_valset> valset_map ;  	
 
 #endif

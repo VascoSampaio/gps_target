@@ -71,39 +71,38 @@ void write_for_checking(unsigned char *buf){
 	ubx_checksum(message_checksum, 6, message_checksum+6);
 }
 
-// static void ubx_cfg(int fd, Configurations* configuration){
-static void ubx_cfg(int fd, Configurations<class T>* configuration){
-	uint8_t write_size;
-	unsigned char buf[60];
+void ubx_cfg(int fd, ubx_payload_valset* valset){
+	
+	std::cout << "Configurating "<< valset->item << "\n";
+	uint8_t write_size = sizeof(valset) + 8;
+	unsigned char buf[write_size];
+
 	buf[0] = 0xb5; /*Header sync1*/
 	buf[1] = 0x62; /*Header sync2*/
 	buf[2] = 0x06; /*class ID: CFG*/
-	buf[5] = 0;    /*lenght MSB*/ 
+	buf[3] = 0x8a;
+	buf[4] = sizeof(valset);
+	buf[5] = 0;    /*lenght MSB*/
+	buf[6] = 0x00; //version
+	buf[7] = 0x01; //layers
+	buf[8] = 0x00; //reserved
+	buf[6] = valset->keyValue & 0xFF; 
+	buf[7] = (valset->keyValue >>  8) & 0xFF;
+	buf[8] = (valset->keyValue >> 16) & 0xFF;
+	buf[9] = (valset->keyValue >> 24) & 0xFF;
+  	// memmove(buf + 10, (valset->idValue), sizeof(valset->idValue));
+     
+	ubx_checksum(buf + 2, write_size-4, buf + write_size - 2);	
+	write_for_checking(buf);
 
-	std::cout << "Configurating "<< configuration->item << "\n";
-	ubx_cfg_valset.cfgData[4]  = configuration->valueId;
-	ubx_cfg_valset.cfgData[3]  = (configuration->keyId >> 24) & 0xFF;
-	ubx_cfg_valset.cfgData[2]  = (configuration->keyId >> 16) & 0xFF;
-	ubx_cfg_valset.cfgData[1]  = (configuration->keyId >>  8) & 0xFF;
-	ubx_cfg_valset.cfgData[0]  =  configuration->keyId        & 0xFF; 
-	ubx_cfg_valset.version     = 0x00; /*USB*/
-	ubx_cfg_valset.layers      = 0x01;
-	buf[3]                     = 0x8a;
-	buf[4]                     = sizeof(ubx_cfg_valset);
-	write_size                 = buf[4]+8;
-	memmove(buf + 6, &ubx_cfg_valset, write_size-2);
- 
-	 ubx_checksum(buf + 2, write_size-4, buf + write_size - 2);	
-	 write_for_checking(buf);
-	//  
-	// for (int i=0; i < write_size; i++)
-		// std::cout << std::hex << (int)buf[i] << " ";
-	// std::cout << " written\n";
+	for (int i=0; i < write_size; i++)
+		std::cout << std::hex << (int)buf[i] << " ";
+	std::cout << " written\n";
  
 	 if(write(fd, buf, write_size) != write_size)
 		ROS_ERROR("GPS: write error UBX_CFG");
 }
-  
+
 static char getbyte(struct pollfd* pf, char rbuf[], char *&rp, uint8_t* bufcnt, uint8_t size)
 {
     if ((rp - rbuf) >= *bufcnt) {/* buffer needs refill */        
@@ -291,20 +290,19 @@ int main(int argc, char **argv)
 	int product_id, vendor_id, sizer = 0;
 	bool configured = false;
 
-	Configurations<uint16_t> rate{0x30210001, pnh.param("rate",100),"rate"};
-	Configurations<char> RTCM{0x10770004,1,"RTCM"};
-	Configurations<char> DGNSSTO{0x201100c4,10,"DGNSSTO"};
-	Configurations<char> S_BAS{0x10360002,0,"SBAS"};
-	Configurations<char> GNS{0x209100b8,1,"GNS"};
-	Configurations<char> GLL{0x209100cc,0,"GLL"}; 
-	Configurations<char> GSA{0x209100c2,0,"GSA"};
-	Configurations<char> GSV{0x209100c7,0,"GSV"};
-	Configurations<char> RMC{0x209100ae,0,"RMC"};
-	Configurations<char> VTG{0x209100b3,0,"VTG"};
-	Configurations<char> GGA{0x209100bd,0,"GGA"};
+	// ubx_payload_valset<uint16_t> rate{0x30210001, pnh.param("rate",100),"rate"};
+	// ubx_payload_valset<char> RTCM{0x10770004,1,"RTCM"};
+	// ubx_payload_valset<char> DGNSSTO{0x201100c4,10,"DGNSSTO"};
+	// ubx_payload_valset<char> S_BAS{0x10360002,0,"SBAS"};
+	// ubx_payload_valset<char> GNS{0x209100b8,1,"GNS"};
+	// ubx_payload_valset<char> GLL{0x209100cc,0,"GLL"}; 
+	// ubx_payload_valset<char> GSA{0x209100c2,0,"GSA"};
+	// ubx_payload_valset<char> GSV{0x209100c7,0,"GSV"};
+	// ubx_payload_valset<char> RMC{0x209100ae,0,"RMC"};
+	// ubx_payload_valset<char> VTG{0x209100b3,0,"VTG"};
+	// ubx_payload_valset<char> GGA{0x209100bd,0,"GGA"};
 
 //CREATE MAP
-	// configuration_map valueId_map;
 	// valueId_map.insert(std::make_pair(0, &rate)); //RATE
 	// valueId_map.insert(std::make_pair(0,&GSA));
 	// valueId_map.insert(std::make_pair(1, &RTCM)); //USBINPROT-RTCM
