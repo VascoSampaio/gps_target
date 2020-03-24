@@ -74,8 +74,30 @@ void write_for_checking(unsigned char *buf){
 void ubx_cfg(int fd, ubx_payload_valset* valset){
 	
 	std::cout << "Configurating "<< valset->item << "\n";
-	uint8_t write_size = sizeof(valset) + 8;
-	unsigned char buf[write_size];
+	uint8_t write_size = 10;
+	unsigned char* buf;
+	char type_id = valset->idValue.type().name()[0];
+
+	switch(type_id){
+		case 'c':
+			write_size = 11;
+			buf = (unsigned char*) malloc (write_size);
+			memmove(buf + 10, &(boost::get<char>(valset->idValue)), sizeof(boost::get<char>(valset->idValue)));
+			break;
+		case 't':
+			write_size = 12;
+			buf = (unsigned char*) malloc (write_size);
+			memmove(buf + 10, &(boost::get<uint16_t>(valset->idValue)), sizeof(boost::get<uint16_t>(valset->idValue)));
+			break;
+		case 'i':
+			write_size = 14;
+			buf = (unsigned char*) malloc (write_size);
+			memmove(buf + 10, &(boost::get<int>(valset->idValue)), sizeof(boost::get<int>(valset->idValue)));
+			break;
+		default:
+			buf = (unsigned char*) malloc (write_size);
+			break;
+	}
 
 	buf[0] = 0xb5; /*Header sync1*/
 	buf[1] = 0x62; /*Header sync2*/
@@ -90,7 +112,7 @@ void ubx_cfg(int fd, ubx_payload_valset* valset){
 	buf[7] = (valset->keyValue >>  8) & 0xFF;
 	buf[8] = (valset->keyValue >> 16) & 0xFF;
 	buf[9] = (valset->keyValue >> 24) & 0xFF;
-  	// memmove(buf + 10, (valset->idValue), sizeof(valset->idValue));
+
      
 	ubx_checksum(buf + 2, write_size-4, buf + write_size - 2);	
 	write_for_checking(buf);
@@ -101,6 +123,8 @@ void ubx_cfg(int fd, ubx_payload_valset* valset){
  
 	 if(write(fd, buf, write_size) != write_size)
 		ROS_ERROR("GPS: write error UBX_CFG");
+
+	free(buf);
 }
 
 static char getbyte(struct pollfd* pf, char rbuf[], char *&rp, uint8_t* bufcnt, uint8_t size)
@@ -290,8 +314,8 @@ int main(int argc, char **argv)
 	int product_id, vendor_id, sizer = 0;
 	bool configured = false;
 
-	// ubx_payload_valset<uint16_t> rate{0x30210001, pnh.param("rate",100),"rate"};
-	// ubx_payload_valset<char> RTCM{0x10770004,1,"RTCM"};
+	ubx_payload_valset rate{0x30210001, "rate", (uint16_t) pnh.param("rate",100)};
+	ubx_payload_valset RTCM{0x10770004,"RTCM", (char) 1};
 	// ubx_payload_valset<char> DGNSSTO{0x201100c4,10,"DGNSSTO"};
 	// ubx_payload_valset<char> S_BAS{0x10360002,0,"SBAS"};
 	// ubx_payload_valset<char> GNS{0x209100b8,1,"GNS"};

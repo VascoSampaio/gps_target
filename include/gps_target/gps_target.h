@@ -59,12 +59,12 @@ ros::Subscriber           sub_rtcm;
   //  ~MyFieldInterface() = default;   
 // };
 
-// template <class T> 
+//template <class T> 
 struct ubx_payload_valset{ /*: public MyFieldInterface {*/
 public: 
   int                                    keyValue;
   std::string                                item;
-  boost::variant<unsigned char,uint16_t>  idValue;  
+  boost::variant<char, uint16_t, int>          idValue;  
 };
 
 static void ubx_checksum(const unsigned char *data, unsigned len, unsigned char ck[2]);
