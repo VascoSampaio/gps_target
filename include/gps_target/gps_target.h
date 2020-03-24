@@ -25,8 +25,9 @@
 // enum messages_configutation{GNS, GLL, GSA, GSV, RMC, VTG,  GGA};
 
 double          latitude, longitude, timenow;
-char            gpsBuffer[80];
-char*           gpsPtr = gpsBuffer;
+unsigned char   gpsBuffer[80];
+unsigned char*  gpsPtr = gpsBuffer;
+uint8_t         buf_size = 10;
  /* GNS-GPS*/
 struct gps_gns_payload{ 
   unsigned char	 messageID[5];
@@ -53,6 +54,8 @@ geographic_msgs::GeoPoint actual_coordinate_geo;
 ros::Publisher            pub_gps;
 ros::Subscriber           sub_rtcm;
 
+
+
 // class MyFieldInterface{
   // public:
   // int m_Size; // of course use appropriate access level in the real code...
@@ -63,13 +66,13 @@ ros::Subscriber           sub_rtcm;
 struct ubx_payload_valset{ /*: public MyFieldInterface {*/
 public: 
   int                                    keyValue;
-  std::string                                item;
-  boost::variant<unsigned char,uint16_t>  idValue;  
+  unsigned char                            idValue;
+  std::string                                item;  
 };
 
 static void ubx_checksum(const unsigned char *data, unsigned len, unsigned char ck[2]);
 void write_for_checking(unsigned char *buf);
 void ubx_cfg(int fd, ubx_payload_valset* valset);
-std::map<int,ubx_payload_valset> valset_map ;  	
+std::map<int,ubx_payload_valset*> valset_map ;  	
 
 #endif
