@@ -44,8 +44,6 @@ static int rtcm_open(const char *tty, int interrupt_min)
 		close(fd);
 		return -1;
 	}
-	// cfsetospeed(&t, 115200);
-	// cfsetispeed(&t, 115200);
 	return fd;
 }
 
@@ -99,9 +97,9 @@ void ubx_cfg(int fd, ubx_payload_valset* valset){
 	ubx_checksum(buf + 2, write_size-4, buf + write_size - 2);	
 	write_for_checking(buf);
 
-	for (int i=0; i < write_size; i++)
-		std::cout << std::hex << (int)buf[i] << " ";
-	std::cout << " written\n";
+	// for (int i=0; i < write_size; i++)
+		// std::cout << std::hex << (int)buf[i] << " ";
+	// std::cout <<"              " << (int)write_size << " written\n\n";
  
 	 if(write(fd, buf, write_size) != write_size)
 		ROS_ERROR("GPS: write error UBX_CFG");
@@ -122,8 +120,8 @@ static unsigned char getbyte(struct pollfd* pf, unsigned char rbuf[], unsigned c
         	rp = rbuf;
 			ROS_INFO("BUFFER");
 			for (int i=0; i < *bufcnt; i++)
-				std::cout << std::hex << (int)rbuf[i] << " ";
-			std::cout <<"              " << (int)*bufcnt << "\n\n";
+				std::cout << std::hex << (int)rbuf[i] << " "; //std::cout << rbuf[i];
+			std::cout <<"              " << (int)*bufcnt << " buffer\n\n";
 			
 		}
     }
@@ -151,7 +149,7 @@ static bool parseUBX(struct pollfd* pf){
 						std::cout << " and got " << (int)*(rp) << " at position " << (rp-2-sync) << "\n";
 						// std::cout <<  (int*)rp << "\n";  
 						// rp--;
-						break;
+						return false;
 					}
 				}
 				std::cout <<"\n";
@@ -166,7 +164,7 @@ static bool parseUBX(struct pollfd* pf){
 }
 
 void parseNMEA(){
-	unsigned char *rp = &gpsBuffer[5];
+	unsigned char *rp = &nmeaBuffer[5];
 	double divisor = 10;
 	gps_gns.latitude = gps_gns.longitude = 0; 
 
@@ -219,40 +217,57 @@ static bool getNMEA(struct pollfd* pf){
 		unsigned char buf[BLEN];
 		unsigned char *rp = &buf[BLEN];
 		unsigned char crc  = 0;
-		enum {START_WAIT, RECEIVING, MSG_RECEIVED} state = START_WAIT; 
+		enum {START_WAIT, RECEIVING_NMEA, RECEIVING_UBX, MSG_RECEIVED_NMEA,MSG_RECEIVED_UBX} 
+		state = START_WAIT; 
 		
 		while(getbyte(pf, buf,rp, &n, BLEN) !=n){
 			// if (*rp == 0xb5 ||*rp == 0x62) {
 			// 	for(int i = 0; i < 15; i++)
-			// std::cout <<std::hex << (int)*rp << " ";
+			// 		std::cout <<std::hex << (int)*rp++ << " ";
 			// 	std::cout <<"\n";
 			// }
 			switch(state){
        		   	case START_WAIT:               		 // Waiting for start of message
 					if(*(rp-1) == '$'){
-						gpsPtr = gpsBuffer;		// Start character received...
-						state = RECEIVING;
-					}                        	 // and start receiving data
+						nmeaPtr = nmeaBuffer;		// Start character received...
+						state = RECEIVING_NMEA;
+					}
+					else if(*(rp-1) == 0xb5 || *(rp) == 0x62){
+						nmeaPtr = nmeaBuffer;		// Start character received...
+						state = RECEIVING_UBX;
+						std::cout << "\n\nRECEIVING\n\n";
+					}                        	 //                        	 // and start receiving data
        		      	break;
-       		   	case RECEIVING:                       // Message Start received
+       		   	case RECEIVING_NMEA:                       // Message Start received
        		      	if(*(rp-1) == '*'){              // If end of message...
 						if (hex_decode(rp,2, &crc)){
-							state = MSG_RECEIVED;    // indicate we're done - don't process any more character until														  
+							state = MSG_RECEIVED_NMEA;    // indicate we're done - don't process any more character until														  
 							break;
 						}
 						state  = START_WAIT;
-						gpsPtr = gpsBuffer;
+						nmeaPtr = nmeaBuffer;
 						return false;
 					}                             		      	 
        		      	else{
-						*(gpsPtr++) = *(rp-1); 
+						*(nmeaPtr++) = *(rp-1); 
 						crc ^= *(rp-1);
-						std::cout << gpsBuffer[gpsPtr-1-gpsBuffer];
-						// ros::spinOnce();
+						// std::cout << nmeaBuffer[nmeaPtr-1-nmeaBuffer];
 					}
        		        break;
-			  	case MSG_RECEIVED:
-				 	std::cout << "   " << (int)(gpsPtr-gpsBuffer) << "\n";
+				case RECEIVING_UBX:                  // Message Start received
+       		      	if(msg_id == 0){
+						
+					if(msg_lgt == 0){              // If end of message...
+						if (hex_decode(rp,2, &crc)){
+							state = MSG_RECEIVED_NMEA;    // indicate we're done - don't process any more character until														  
+							break;
+						}
+						state  = START_WAIT;
+						nmeaPtr = nmeaBuffer;
+						return false;
+
+			  	case MSG_RECEIVED_NMEA:
+				 	// std::cout << "   " << (int)(nmeaPtr-nmeaBuffer) << "\n";
 				  	parseNMEA();
 					state  = START_WAIT;
 					break;					
@@ -345,27 +360,29 @@ int main(int argc, char **argv)
 	ubx_payload_valset RMC{0x209100ae,0,"RMC"};
 	ubx_payload_valset VTG{0x209100b3,0,"VTG"};
 	ubx_payload_valset GGA{0x209100bd,0,"GGA"};
+	ubx_payload_valset COMM_OUT{0x20910352,1, "COMM_OUT"};
 	
 	//FOR UART port
 	if (!pnh.param<bool>("USB", false)){ //UART
 		ROS_WARN("UART");
 		NMEA_OUT= {0x10740002, (unsigned char)pnh.param("NMEA",1),"NMEA_OUT"};
 		UBX_OUT = {0x10740001, 1,"UBX_OUT"};
-		NMEA_IN = {0x10730002,0,"NMEA_IN"};
-		GNS     = {0x209100b6,1,"GNS"};
-		GLL     = {0x209100ca,0,"GLL"};
-		GSA     = {0x209100c0,0,"GSA"};
-		GSV     = {0x209100c5,0,"GSV"};
-		RMC     = {0x209100ac,0,"RMC"};
-		VTG     = {0x209100b1,0,"VTG"};
-		GGA     = {0x209100bb,0,"GGA"};
+		NMEA_IN = {0x10730002, 0,"NMEA_IN"};
+		GNS     = {0x209100b6, 1,"GNS"};
+		GLL     = {0x209100ca, 0,"GLL"};
+		GSA     = {0x209100c0, 0,"GSA"};
+		GSV     = {0x209100c5, 0,"GSV"};
+		RMC     = {0x209100ac, 0,"RMC"};
+		VTG     = {0x209100b1, 0,"VTG"};
+		GGA     = {0x209100bb, 0,"GGA"};
+		COMM_OUT= {0x20910350,1, "COMM_OUT"};
 	}
 		// ubx_payload_valset RTCM_IN{0x10770004,1,"RTCM_IN"};
 		// ubx_payload_valset RXM{0x2091026b,0,"RXM"};
 		// ubx_payload_valset NAV{0x20910348,0,"NAV"};
 
 //CREATE MAP
-	valset_map.insert(std::make_pair(0,&UBX_OUT));
+	valset_map.insert(std::make_pair(0, &UBX_OUT));
 	valset_map.insert(std::make_pair(1, &NMEA_IN));
 	valset_map.insert(std::make_pair(2, &DGNSSTO)); //DGNSSTO
 	valset_map.insert(std::make_pair(3, &S_BAS)); //SBAS
@@ -378,8 +395,9 @@ int main(int argc, char **argv)
 	valset_map.insert(std::make_pair(10,&GSA));
 	valset_map.insert(std::make_pair(11,&GPS_ONLY));
 	valset_map.insert(std::make_pair(12,&NMEA_OUT));
-	valset_map.insert(std::make_pair(13, &rate)); //RATE
-
+	valset_map.insert(std::make_pair(13,&rate)); //RATE
+	valset_map.insert(std::make_pair(14,&COMM_OUT)); //RATE
+	
 	// valset_map.insert(std::make_pair(11,&RXM)); //USBINPROT-RTCM
 	// valset_map.insert(std::make_pair(14,&NAV));
 
@@ -390,7 +408,7 @@ int main(int argc, char **argv)
 	  while (ros::ok()) {
 		if(!port_opened){
 			main_with_exceptions(portName_, vendor_id, product_id);
-			// portName_= "/dev/ttyACM0";
+			// portName_= "/dev/ttyACM1";
 			pfd[0].fd = rtcm_open(portName_.c_str(),buf_size);
 			if (pfd[0].fd < 0) {
 				ROS_ERROR("RTCM: error opening %s", portName_.c_str());
@@ -411,24 +429,35 @@ int main(int argc, char **argv)
 			pfd[0].fd = rtcm_open(portName_.c_str(),buf_size);
 		}
 	
+// 	int ab=0;
+// std::cin >> ab;
+	// char start_stream= '!';
+	// if(write(pfd[0].fd, &start_stream , 1) != 1)
+		// ROS_ERROR("PIC32: FAILED TO START NMEA STREAM");
+// std::cin >> ab;
+
 		if (!configured){
 			int i;
 			for(i=0; i < valset_map.size();){
-					ubx_cfg(pfd[0].fd,valset_map[i]);
-					usleep(250000);
-					if(parseUBX(pfd)){
-						std::cout << "Configured "<< valset_map[i]->item << "\n";
-						i++;
-					}
+				ubx_cfg(pfd[0].fd,valset_map[i]);
+				usleep(250000);
+				if(parseUBX(pfd)){
+					std::cout << "Configured "<< valset_map[i]->item << "\n";
+					i++;
+				}
+				// usleep(1000000);
 			}
 			ROS_INFO("CONFIGURED");
 			configured = true;
+			char start_stream= 'a';
+			if(write(pfd[0].fd, &start_stream , 1) != 1)
+				ROS_ERROR("PIC32: FAILED TO START NMEA STREAM");
 		 }
 		else{
 			sub_rtcm = n.subscribe<mavros_msgs::RTCM>("/rtcm_stream",3, std::bind(rtcm_streamer, std::placeholders::_1, pfd, sizer));
 			while(ros::ok()) {
  				if(!getNMEA(pfd)){
-					//  break;
+					// break;
 				 } 					
   	 		}
 		}

@@ -25,9 +25,12 @@
 // enum messages_configutation{GNS, GLL, GSA, GSV, RMC, VTG,  GGA};
 
 double          latitude, longitude, timenow;
-unsigned char   gpsBuffer[80];
-unsigned char*  gpsPtr = gpsBuffer;
+unsigned char   nmeaBuffer[80];
+unsigned char   ubxBuffer[60];
+unsigned char*  nmeaPtr = gpsBuffer;
+unsigned char*  ubxPtr = gpsBuffer;
 uint8_t         buf_size = 10;
+
  /* GNS-GPS*/
 struct gps_gns_payload{ 
   unsigned char	 messageID[5];
