@@ -50,7 +50,7 @@ static int rtcm_open(const char *tty, int interrupt_min)
 /*
  * Calculate UBX ckecksum for LEN bytes of data pointed by DATA
  */
-static void ubx_checksum(const unsigned char *data, unsigned len, unsigned char ck[2])
+static bool ubx_checksum(const unsigned char *data,  unsigned len, unsigned char ck[2], unsigned char comparator = 0)
 {
 	const unsigned char *buffer = data;
 	unsigned char ck_a = 0;
@@ -63,6 +63,12 @@ static void ubx_checksum(const unsigned char *data, unsigned len, unsigned char 
 
 	ck[0] = ck_a;
 	ck[1] = ck_b;
+
+	// std::cout <<(int)ck_a << " " << (int)comparator << "comparator \n";
+	if(comparator == ck_a || comparator == ck_b) {
+		return true;
+	}
+	return false;
 }
 
 void write_for_checking(unsigned char *buf){
@@ -118,11 +124,11 @@ static unsigned char getbyte(struct pollfd* pf, unsigned char rbuf[], unsigned c
 				return false;
         	}
         	rp = rbuf;
-			ROS_INFO("BUFFER");
+			std::cout <<"\nBUFFER \n";
 			for (int i=0; i < *bufcnt; i++)
 				std::cout << std::hex << (int)rbuf[i] << " "; //std::cout << rbuf[i];
 			std::cout <<"              " << (int)*bufcnt << " buffer\n\n";
-			
+			 std::cout <<"\n";
 		}
     }
 	return *rp++;
@@ -217,25 +223,28 @@ static bool getNMEA(struct pollfd* pf){
 		unsigned char buf[BLEN];
 		unsigned char *rp = &buf[BLEN];
 		unsigned char crc  = 0;
-		enum {START_WAIT, RECEIVING_NMEA, RECEIVING_UBX, MSG_RECEIVED_NMEA,MSG_RECEIVED_UBX} 
+		enum {START_WAIT, RECEIVING_NMEA, RECEIVING_UBX, RECEIVING_UBX_PAYLOAD, MSG_RECEIVED_NMEA,MSG_RECEIVED_UBX} 
 		state = START_WAIT; 
-		
+		char msg_id = -1, msg_clas= -1;
+		int msg_lgt= -1;
+
 		while(getbyte(pf, buf,rp, &n, BLEN) !=n){
-			// if (*rp == 0xb5 ||*rp == 0x62) {
-			// 	for(int i = 0; i < 15; i++)
-			// 		std::cout <<std::hex << (int)*rp++ << " ";
-			// 	std::cout <<"\n";
-			// }
 			switch(state){
        		   	case START_WAIT:               		 // Waiting for start of message
 					if(*(rp-1) == '$'){
 						nmeaPtr = nmeaBuffer;		// Start character received...
 						state = RECEIVING_NMEA;
 					}
-					else if(*(rp-1) == 0xb5 || *(rp) == 0x62){
-						nmeaPtr = nmeaBuffer;		// Start character received...
-						state = RECEIVING_UBX;
-						std::cout << "\n\nRECEIVING\n\n";
+					else if(*(rp-1) == 0xb5){
+						if(getbyte(pf, buf,rp, &n, BLEN) !=n){
+							if(*(rp-1) == 0x62){
+								ubxPtr = ubxBuffer;		// Start character received...
+								msg_lgt = msg_id = msg_clas = -1;
+								state = RECEIVING_UBX;
+								std::cout <<"RECEIVING UBX\n";
+						
+							}
+						}
 					}                        	 //                        	 // and start receiving data
        		      	break;
        		   	case RECEIVING_NMEA:                       // Message Start received
@@ -254,21 +263,59 @@ static bool getNMEA(struct pollfd* pf){
 						// std::cout << nmeaBuffer[nmeaPtr-1-nmeaBuffer];
 					}
        		        break;
+					   
 				case RECEIVING_UBX:                  // Message Start received
-       		      	if(msg_id == 0){
+       		      	if(msg_clas == -1)
+						*(ubxPtr++) = msg_clas = *(rp-1);
+					else if(msg_id == -1)             // If end of message...
+						*(ubxPtr++) = msg_id = *(rp-1);
+					else if(msg_lgt == -1)              // If end of message...
+						*(ubxPtr++) = msg_lgt = *(rp-1);
+					else{
+						*(ubxPtr++) = (*(rp-1) <<  8);
+						msg_lgt |= (*(rp-1) <<  8);
+						state = RECEIVING_UBX_PAYLOAD;
+						std::cout <<std::hex<< " " << (int)ubxBuffer[0]<< " " << (int)ubxBuffer[1]<< " " << (int)ubxBuffer[2] << " " <<(int)ubxBuffer[3] << " ID's done  ";
+					}
+					break;
 						
-					if(msg_lgt == 0){              // If end of message...
-						if (hex_decode(rp,2, &crc)){
-							state = MSG_RECEIVED_NMEA;    // indicate we're done - don't process any more character until														  
-							break;
+				case RECEIVING_UBX_PAYLOAD:	
+					if(ubxPtr - ubxBuffer -4< msg_lgt){
+						*(ubxPtr++) = *(rp-1);
+						std::cout <<std::hex<< " " << (int)*((ubxPtr-1)); 		
+					}
+					else{
+						if (ubx_checksum(ubxBuffer,msg_lgt+4,ubxBuffer+4+msg_lgt,*(rp-1))){
+							std::cout <<std::hex<< " " << (int)*(ubxPtr++) << "  ck_a";
+							if(getbyte(pf, buf,rp, &n, BLEN) !=n){
+								if (*(ubxBuffer+5+msg_lgt) == *(rp-1)){
+									std::cout <<std::hex<< " " << (int)*(ubxPtr) << "  ck_b";
+									state = MSG_RECEIVED_UBX;
+									break;
+								}
+								else{
+									state = START_WAIT;
+								}		
+							}
+							else{
+								state = START_WAIT;
+							}	
 						}
-						state  = START_WAIT;
-						nmeaPtr = nmeaBuffer;
-						return false;
+						else{
+							state = START_WAIT;
+						}
+					}		
+					// std::cout <<std::hex<< " " << (int)*(ubxPtr);
+					break;
 
 			  	case MSG_RECEIVED_NMEA:
 				 	// std::cout << "   " << (int)(nmeaPtr-nmeaBuffer) << "\n";
 				  	parseNMEA();
+					state  = START_WAIT;
+					break;
+
+				case MSG_RECEIVED_UBX:
+				 	std::cout << "        DONE  "  << (int)(ubxPtr - ubxBuffer) << "\n";
 					state  = START_WAIT;
 					break;					
 			}
@@ -375,7 +422,7 @@ int main(int argc, char **argv)
 		RMC     = {0x209100ac, 0,"RMC"};
 		VTG     = {0x209100b1, 0,"VTG"};
 		GGA     = {0x209100bb, 0,"GGA"};
-		COMM_OUT= {0x20910350,1, "COMM_OUT"};
+		COMM_OUT= {0x20910350, 1, "COMM_OUT"};
 	}
 		// ubx_payload_valset RTCM_IN{0x10770004,1,"RTCM_IN"};
 		// ubx_payload_valset RXM{0x2091026b,0,"RXM"};
@@ -408,7 +455,7 @@ int main(int argc, char **argv)
 	  while (ros::ok()) {
 		if(!port_opened){
 			main_with_exceptions(portName_, vendor_id, product_id);
-			// portName_= "/dev/ttyACM1";
+			// portName_= "/dev/ttyACM0";
 			pfd[0].fd = rtcm_open(portName_.c_str(),buf_size);
 			if (pfd[0].fd < 0) {
 				ROS_ERROR("RTCM: error opening %s", portName_.c_str());
@@ -445,7 +492,6 @@ int main(int argc, char **argv)
 					std::cout << "Configured "<< valset_map[i]->item << "\n";
 					i++;
 				}
-				// usleep(1000000);
 			}
 			ROS_INFO("CONFIGURED");
 			configured = true;

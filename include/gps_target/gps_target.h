@@ -27,9 +27,9 @@
 double          latitude, longitude, timenow;
 unsigned char   nmeaBuffer[80];
 unsigned char   ubxBuffer[60];
-unsigned char*  nmeaPtr = gpsBuffer;
-unsigned char*  ubxPtr = gpsBuffer;
-uint8_t         buf_size = 10;
+unsigned char*  nmeaPtr = nmeaBuffer;
+unsigned char*  ubxPtr = ubxBuffer;
+uint8_t         buf_size = 100;
 
  /* GNS-GPS*/
 struct gps_gns_payload{ 
@@ -73,7 +73,7 @@ public:
   std::string                                item;  
 };
 
-static void ubx_checksum(const unsigned char *data, unsigned len, unsigned char ck[2]);
+// static void ubx_checksum(const unsigned char *data, unsigned len, unsigned char ck[2], unsigned char comparator[2] = {0,0});
 void write_for_checking(unsigned char *buf);
 void ubx_cfg(int fd, ubx_payload_valset* valset);
 std::map<int,ubx_payload_valset*> valset_map ;  	
