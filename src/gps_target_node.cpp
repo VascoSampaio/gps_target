@@ -79,36 +79,60 @@ void write_for_checking(unsigned char *buf){
 
 void ubx_cfg(int fd, ubx_payload_valset* valset){
 	
-	uint8_t write_size;
-	valset->item == "rate" ? write_size = 10+8 : write_size = 9+8;
-	unsigned char buf[write_size];
+	std::cout << "Configurating "<< valset->item << "\n";
+	uint8_t write_size = 10;
+	unsigned char* buf;
+	char type_id = valset->idValue.type().name()[0];
 
-	buf[0] = 0xb5; /*Header sync1*/
-	buf[1] = 0x62; /*Header sync2*/
-	buf[2] = 0x06; /*class ID: CFG*/
-	buf[3] = 0x8a;
-	(valset->item == "rate" ? buf[4] = sizeof(valset->keyValue) + sizeof(valset->idValue) + 5 :\
-																	buf[4] = sizeof(valset->keyValue)+sizeof(valset->idValue) +4); 
-	buf[5] = 0;    /*lenght MSB*/
-	buf[6] = 0x00; //version
-	buf[7] = 0x01; //layers
-	buf[8] = 0x00; //reserved
-	buf[9] = 0x00; //reserved
+	switch(type_id){
+		case 'c':
+			write_size = 17;
+			buf = (unsigned char*) malloc (write_size);
+			memmove(buf + 14, &(boost::get<char>(valset->idValue)), sizeof(boost::get<char>(valset->idValue)));
+			break;
+		case 't':
+			write_size = 18;
+			buf = (unsigned char*) malloc (write_size);
+			memmove(buf + 14, &(boost::get<uint16_t>(valset->idValue)), sizeof(boost::get<uint16_t>(valset->idValue)));
+			break;
+		case 'i':
+			write_size = 20;
+			buf = (unsigned char*) malloc (write_size);
+			memmove(buf + 14, &(boost::get<int>(valset->idValue)), sizeof(boost::get<int>(valset->idValue)));
+			break;
+		default:
+			buf = (unsigned char*) malloc (write_size);
+			break;
+	}
+
+	buf[0]  = 0xb5; /*Header sync1*/
+	buf[1]  = 0x62; /*Header sync2*/
+	buf[2]  = 0x06; /*class ID: CFG*/
+	buf[3]  = 0x8a;
+	buf[4]  = write_size-8;
+	buf[5]  = 0;    /*lenght MSB*/
+	buf[6]  = 0x00; //version
+	buf[7]  = 0x01; //layers
+	buf[8]  = 0x00; //reserved
+	buf[9]  = 0x00; //reserved
 	buf[10] = valset->keyValue & 0xFF; 
 	buf[11] = (valset->keyValue >>  8) & 0xFF;
 	buf[12] = (valset->keyValue >> 16) & 0xFF;
 	buf[13] = (valset->keyValue >> 24) & 0xFF;
-    buf[14]= valset->idValue;
 
+
+     
 	ubx_checksum(buf + 2, write_size-4, buf + write_size - 2);	
 	write_for_checking(buf);
 
-	// for (int i=0; i < write_size; i++)
-		// std::cout << std::hex << (int)buf[i] << " ";
-	// std::cout <<"              " << (int)write_size << " written\n\n";
+	for (int i=0; i < write_size; i++)
+		std::cout << std::hex << (int)buf[i] << " ";
+	std::cout << " written\n";
  
 	 if(write(fd, buf, write_size) != write_size)
 		ROS_ERROR("GPS: write error UBX_CFG");
+
+	free(buf);
 }
 
 static unsigned char getbyte(struct pollfd* pf, unsigned char rbuf[], unsigned char *&rp, uint8_t* bufcnt, uint8_t size)
