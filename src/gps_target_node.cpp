@@ -38,7 +38,7 @@ static int rtcm_open(const char *tty, int interrupt_min)
 
 	memset(&t, 0, sizeof t);
 	t.c_cc[VMIN] = interrupt_min;
-	t.c_cflag = B38400 | CS8 | CREAD | CLOCAL | HUPCL; //baud rate, 8 bits, CREAD and CLOCAL are mandatory, let modem hang up
+	t.c_cflag = B115200 | CS8 | CREAD | CLOCAL | HUPCL; //baud rate, 8 bits, CREAD and CLOCAL are mandatory, let modem hang up
 
 	if (tcsetattr(fd, TCSANOW, &t)) { //set parameters, t, to file descriptor, fd, immediately, TCSANOW
 		close(fd);
@@ -79,16 +79,15 @@ void write_for_checking(unsigned char *buf){
 
 void ubx_cfg(int fd, ubx_payload_valset* valset){
 	
-	std::cout << "Configurating "<< valset->item << "\n";
 	uint8_t write_size = 10;
 	unsigned char* buf;
-	char type_id = valset->idValue.type().name()[0];
+	// char type_id = valset->idValue.type().name()[0];
 
-	switch(type_id){
-		case 'c':
+	switch(valset->idValue.type().name()[0]){
+		case 'h':
 			write_size = 17;
 			buf = (unsigned char*) malloc (write_size);
-			memmove(buf + 14, &(boost::get<char>(valset->idValue)), sizeof(boost::get<char>(valset->idValue)));
+			memmove(buf + 14, &(boost::get<unsigned char>(valset->idValue)), sizeof(boost::get<unsigned char>(valset->idValue)));
 			break;
 		case 't':
 			write_size = 18;
@@ -119,15 +118,13 @@ void ubx_cfg(int fd, ubx_payload_valset* valset){
 	buf[11] = (valset->keyValue >>  8) & 0xFF;
 	buf[12] = (valset->keyValue >> 16) & 0xFF;
 	buf[13] = (valset->keyValue >> 24) & 0xFF;
-
-
      
 	ubx_checksum(buf + 2, write_size-4, buf + write_size - 2);	
 	write_for_checking(buf);
 
-	for (int i=0; i < write_size; i++)
-		std::cout << std::hex << (int)buf[i] << " ";
-	std::cout << " written\n";
+	// for (int i=0; i < write_size; i++)
+		// std::cout << std::hex << (int)buf[i] << " ";
+	// std::cout << " written\n";
  
 	 if(write(fd, buf, write_size) != write_size)
 		ROS_ERROR("GPS: write error UBX_CFG");
@@ -174,7 +171,7 @@ static bool parseUBX(struct pollfd* pf){
 					if(getbyte(pf, buf,rp, &n, BLEN) != message_checksum[rp-2-sync]){
 						// std::cout << (int)message_checksum[rp-3-sync] << " expected\n";
 						std::cout << "Expected " << (int)message_checksum[rp-2-sync];
-						std::cout << " and got " << (int)*(rp) << " at position " << (rp-2-sync) << "\n";
+						std::cout << " and got " << (int)*(rp-1) << " at position " << (rp-2-sync) << "\n";
 						// std::cout <<  (int*)rp << "\n";  
 						// rp--;
 						return false;
@@ -373,7 +370,6 @@ void rtcm_streamer(const mavros_msgs::RTCM::ConstPtr& _msg, struct pollfd* pf, i
 	// std::cout << "\n"  <<"\n\n";
 		
 	if(_msg->data[0] ==0xb5){
-		std::cout << "Returning ";
 		return;
 	}
 
@@ -413,60 +409,64 @@ int main(int argc, char **argv)
 	pfd[0].events = POLLIN;
 
 
-	ubx_payload_valset rate{0x30210001, (unsigned char)pnh.param("rate",100),"rate"};
-	ubx_payload_valset DGNSSTO{0x201100c4,20,"DGNSSTO"};
-	ubx_payload_valset S_BAS{0x10930012,0,"SBAS"};
-	ubx_payload_valset GPS_ONLY{0x10930025,0,"GPS_ONLY"};	
+	ubx_payload_valset rate{0x30210001,    (uint16_t)pnh.param("rate",100), "rate"};
+	ubx_payload_valset DGNSSTO{0x201100c4, (unsigned char) 20,"DGNSSTO"};
+	ubx_payload_valset S_BAS{0x10930012,   (unsigned char) 0,"SBAS"};
+	ubx_payload_valset GPS_ONLY{0x10930025,(unsigned char) 0,"GPS_ONLY"};	
 
 	//FOR USB port
-	ubx_payload_valset NMEA_OUT{0x10780002, (unsigned char)pnh.param("NMEA",1),"NMEA_OUT"};
-	ubx_payload_valset UBX_OUT{0x10780001, 1,"UBX_OUT"};
-	ubx_payload_valset NMEA_IN{0x10770002,0,"NMEA_IN"}; 
-	ubx_payload_valset GNS{0x209100b8,1,"GNS"};
-	ubx_payload_valset GLL{0x209100cc,0,"GLL"}; 
-	ubx_payload_valset GSA{0x209100c2,0,"GSA"};
-	ubx_payload_valset GSV{0x209100c7,0,"GSV"};
-	ubx_payload_valset RMC{0x209100ae,0,"RMC"};
-	ubx_payload_valset VTG{0x209100b3,0,"VTG"};
-	ubx_payload_valset GGA{0x209100bd,0,"GGA"};
-	ubx_payload_valset COMM_OUT{0x20910352,1, "COMM_OUT"};
+	
+	ubx_payload_valset NMEA_OUT{0x10780002, (uint16_t)pnh.param("NMEA",1),"NMEA_OUT"};
+	ubx_payload_valset UBX_OUT{0x10780001, (unsigned char)1,"UBX_OUT"};
+	ubx_payload_valset NMEA_IN{0x10770002,(unsigned char) 0,"NMEA_IN"}; 
+	ubx_payload_valset COMM_OUT{0x20910352,(unsigned char)1, "COMM_OUT"};
+	ubx_payload_valset GNS{0x209100b8,(unsigned char)1,"GNS"};
+	ubx_payload_valset GLL{0x209100cc,(unsigned char)0,"GLL"}; 
+	ubx_payload_valset GSA{0x209100c2,(unsigned char)0,"GSA"};
+	ubx_payload_valset GSV{0x209100c7,(unsigned char)0,"GSV"};
+	ubx_payload_valset RMC{0x209100ae,(unsigned char)0,"RMC"};
+	ubx_payload_valset VTG{0x209100b3,(unsigned char)0,"VTG"};
+	ubx_payload_valset GGA{0x209100bd,(unsigned char)0,"GGA"};
+	ubx_payload_valset RTCM{0x10770004,(unsigned char) 1,"RTCM"};
+	ubx_payload_valset baudrate;
 	
 	//FOR UART port
 	if (!pnh.param<bool>("USB", false)){ //UART
 		ROS_WARN("UART");
 		NMEA_OUT= {0x10740002, (unsigned char)pnh.param("NMEA",1),"NMEA_OUT"};
-		UBX_OUT = {0x10740001, 1,"UBX_OUT"};
-		NMEA_IN = {0x10730002, 0,"NMEA_IN"};
-		GNS     = {0x209100b6, 1,"GNS"};
-		GLL     = {0x209100ca, 0,"GLL"};
-		GSA     = {0x209100c0, 0,"GSA"};
-		GSV     = {0x209100c5, 0,"GSV"};
-		RMC     = {0x209100ac, 0,"RMC"};
-		VTG     = {0x209100b1, 0,"VTG"};
-		GGA     = {0x209100bb, 0,"GGA"};
-		COMM_OUT= {0x20910350, 0, "COMM_OUT"};
+		UBX_OUT = {0x10740001, (unsigned char)1,"UBX_OUT"};
+		NMEA_IN = {0x10730002, (unsigned char)0,"NMEA_IN"};
+		GNS     = {0x209100b6, (unsigned char)1,"GNS"};
+		GLL     = {0x209100ca, (unsigned char)0,"GLL"};
+		GSA     = {0x209100c0, (unsigned char)0,"GSA"};
+		GSV     = {0x209100c5, (unsigned char)0,"GSV"};
+		RMC     = {0x209100ac, (unsigned char)0,"RMC"};
+		VTG     = {0x209100b1, (unsigned char)0,"VTG"};
+		GGA     = {0x209100bb, (unsigned char)0,"GGA"};
+		COMM_OUT= {0x20910350, (unsigned char)0, "COMM_OUT"};
+ 		baudrate= {0x40520001, (int) 115200, "baudrate"};
 	}
-		// ubx_payload_valset RTCM_IN{0x10770004,1,"RTCM_IN"};
-		// ubx_payload_valset RXM{0x2091026b,0,"RXM"};
-		// ubx_payload_valset NAV{0x20910348,0,"NAV"};
+	// ubx_payload_valset RTCM_IN{0x10770004,1,"RTCM_IN"};
+	// ubx_payload_valset RXM{0x2091026b,0,"RXM"};
+	// ubx_payload_valset NAV{0x20910348,0,"NAV"};
 
-//CREATE MAP
-	valset_map.insert(std::make_pair(0, &UBX_OUT));
-	valset_map.insert(std::make_pair(1, &NMEA_IN));
-	valset_map.insert(std::make_pair(2, &DGNSSTO)); //DGNSSTO
-	valset_map.insert(std::make_pair(3, &S_BAS)); //SBAS
-	valset_map.insert(std::make_pair(4, &GNS)); //GNS
-	valset_map.insert(std::make_pair(5, &GGA));
-	valset_map.insert(std::make_pair(6, &VTG));
-	valset_map.insert(std::make_pair(7, &RMC));
-	valset_map.insert(std::make_pair(8, &GSV));
-	valset_map.insert(std::make_pair(9, &GLL)); 
-	valset_map.insert(std::make_pair(10,&GSA));
-	valset_map.insert(std::make_pair(11,&GPS_ONLY));
-	valset_map.insert(std::make_pair(12,&NMEA_OUT));
-	valset_map.insert(std::make_pair(13,&rate)); //RATE
-	valset_map.insert(std::make_pair(14,&COMM_OUT)); //RATE
+	valset_map.insert(std::make_pair(0, &GGA));
+	valset_map.insert(std::make_pair(1, &GNS));
+	valset_map.insert(std::make_pair(2, &VTG));
+	valset_map.insert(std::make_pair(3, &RMC));
+	valset_map.insert(std::make_pair(4, &GSV));
+	valset_map.insert(std::make_pair(5, &GLL));
+	valset_map.insert(std::make_pair(6, &GSA));
+	valset_map.insert(std::make_pair(7, &S_BAS));
+	valset_map.insert(std::make_pair(8, &DGNSSTO)); 
+	valset_map.insert(std::make_pair(9, &COMM_OUT));
+	valset_map.insert(std::make_pair(10,&GPS_ONLY));
+	valset_map.insert(std::make_pair(11,&rate));  
+	valset_map.insert(std::make_pair(12,&NMEA_OUT));	
+	// valset_map.insert(std::make_pair(13,&baudrate));  
 	
+	// valset_map.insert(std::make_pair(0, &UBX_OUT));
+	// valset_map.insert(std::make_pair(1, &NMEA_IN));
 	// valset_map.insert(std::make_pair(11,&RXM)); //USBINPROT-RTCM
 	// valset_map.insert(std::make_pair(14,&NAV));
 
@@ -489,21 +489,14 @@ int main(int argc, char **argv)
 				port_opened = true;
 			}
 		} 
-		else if (NMEA_IN.idValue != 0){
-			ROS_INFO("Changing VMIN OPENED %s", portName_.c_str());
-			pfd[0].fd = rtcm_open(portName_.c_str(),80);
-		}
+		// else if (NMEA_IN.idValue != 0){
+		// 	ROS_INFO("Changing VMIN OPENED %s", portName_.c_str());
+		// 	pfd[0].fd = rtcm_open(portName_.c_str(),80);
+		// }
 		else {
 			ROS_INFO("Kepping VMIN OPENED %s", portName_.c_str());
 			pfd[0].fd = rtcm_open(portName_.c_str(),buf_size);
 		}
-	
-// 	int ab=0;
-// std::cin >> ab;
-	// char start_stream= '!';
-	// if(write(pfd[0].fd, &start_stream , 1) != 1)
-		// ROS_ERROR("PIC32: FAILED TO START NMEA STREAM");
-// std::cin >> ab;
 
 		if (!configured){
 			int i;

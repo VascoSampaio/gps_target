@@ -29,7 +29,7 @@ unsigned char   nmeaBuffer[80];
 unsigned char   ubxBuffer[60];
 unsigned char*  nmeaPtr = nmeaBuffer;
 unsigned char*  ubxPtr = ubxBuffer;
-uint8_t         buf_size = 12;
+uint8_t         buf_size = 80;
 
  /* GNS-GPS*/
 struct gps_gns_payload{ 
@@ -68,9 +68,9 @@ ros::Subscriber           sub_rtcm;
 // template <class T> 
 struct ubx_payload_valset{ /*: public MyFieldInterface {*/
 public: 
-  int                                    keyValue;
-  unsigned char                            idValue;
-  std::string                                item;  
+  int                                                   keyValue;
+  boost::variant<unsigned char, uint16_t, int>          idValue;  
+  std::string                                           item;  
 };
 
 // static void ubx_checksum(const unsigned char *data, unsigned len, unsigned char ck[2], unsigned char comparator[2] = {0,0});

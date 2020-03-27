@@ -168,14 +168,12 @@ void __ISR(_UART_1_VECTOR, IPL7SAVEALL) UART1ISR(void){ //UART FROM PC TO GPS  -
     while(U1STAbits.URXDA){
         curChar = U1RXREG;
         U4TXREG    = curChar; //   U1RXREG; //
-        //U1TXREG    = curChar; //   curChar; //
-         counter++;
     }
 //    if (curChar == 0xb5 || curChar == 0x62 || curChar == 0x6 || curChar == 0x8a || curChar == 0x9 || curChar == 0x1 || curChar == 0x0 || curChar == 0x74 || curChar == 0x10 || curChar == 0x20 || curChar == 0xb3) 
-    if(U4STAbits.UTXBF){  
-        LATESET    = 0x10;             
-//        counter++;
-    }
+//    if (curChar == 'a'){
+//        U4MODEbits.ON  = 0;
+//        LATECLR         = 0x8;
+//    }
 //    if(curChar == 'a'){
 //        LATESET    = 0x10;     
 //        U4STAbits.URXEN = 1; 
@@ -213,8 +211,8 @@ void main(){
     IO_SETUP(); //INITIALIZE I/O
     
    //INITIALIZE UART
-    UART1_Initializer(38400); //baud rate =  115K
-    UART4_Initializer(38400);   //baud rate =  115K    
+    UART1_Initializer(115200); //baud rate =  115K
+    UART4_Initializer(115200);   //baud rate =  115K    
    
     GENERAL_INTERRUPT_SETUP(); //SETUP INTERRUPT    
    
