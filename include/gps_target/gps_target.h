@@ -29,7 +29,7 @@ unsigned char   nmeaBuffer[80];
 unsigned char   ubxBuffer[60];
 unsigned char*  nmeaPtr = nmeaBuffer;
 unsigned char*  ubxPtr = ubxBuffer;
-uint8_t         buf_size = 100;
+uint8_t         buf_size = 12;
 
  /* GNS-GPS*/
 struct gps_gns_payload{ 
