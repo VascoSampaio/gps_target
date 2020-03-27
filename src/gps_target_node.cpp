@@ -80,17 +80,17 @@ void ubx_cfg(int fd, ubx_payload_valset* valset){
 
 	switch(type_id){
 		case 'c':
-			write_size = 11;
+			write_size = 13;
 			buf = (unsigned char*) malloc (write_size);
 			memmove(buf + 10, &(boost::get<char>(valset->idValue)), sizeof(boost::get<char>(valset->idValue)));
 			break;
 		case 't':
-			write_size = 12;
+			write_size = 14;
 			buf = (unsigned char*) malloc (write_size);
 			memmove(buf + 10, &(boost::get<uint16_t>(valset->idValue)), sizeof(boost::get<uint16_t>(valset->idValue)));
 			break;
 		case 'i':
-			write_size = 14;
+			write_size = 16;
 			buf = (unsigned char*) malloc (write_size);
 			memmove(buf + 10, &(boost::get<int>(valset->idValue)), sizeof(boost::get<int>(valset->idValue)));
 			break;
@@ -165,7 +165,7 @@ static bool parseUBX(struct pollfd* pf){
 						std::cout << " and got " << (int)*(rp-1) << " at position " << (rp-3-sync) << "\n";
 						// std::cout <<  (int*)rp << "\n";  
 						// rp--;
-						return false;
+						break;
 					}
 				}
 				std::cout <<"\n";
@@ -317,6 +317,7 @@ int main(int argc, char **argv)
 
 	ubx_payload_valset rate{0x30210001, "rate", (uint16_t) pnh.param("rate",100)};
 	ubx_payload_valset RTCM{0x10770004,"RTCM", (char) 1};
+	ubx_payload_valset baudrate{0x40520001, "baudrate", (int) 115200};
 	// ubx_payload_valset<char> DGNSSTO{0x201100c4,10,"DGNSSTO"};
 	// ubx_payload_valset<char> S_BAS{0x10360002,0,"SBAS"};
 	// ubx_payload_valset<char> GNS{0x209100b8,1,"GNS"};
@@ -329,8 +330,8 @@ int main(int argc, char **argv)
 
 //CREATE MAP
 	valueId_map.insert(std::pair<int, ubx_payload_valset*>(0, &rate)); //RATE
-	// valueId_map.insert(std::pair<int, ubx_payload_valset*>(0,&GSA));
-	// valueId_map.insert(std::pair<int, ubx_payload_valset*>(1, &RTCM)); //USBINPROT-RTCM
+	valueId_map.insert(std::pair<int, ubx_payload_valset*>(1,&RTCM));
+	valueId_map.insert(std::pair<int, ubx_payload_valset*>(2, &baudrate)); //USBINPROT-RTCM
 	// valueId_map.insert(std::pair<int, ubx_payload_valset*>(2, &DGNSSTO)); //DGNSSTO
 	// valueId_map.insert(std::pair<int, ubx_payload_valset*>(3, &S_BAS)); //SBAS
 	// valueId_map.insert(std::pair<int, ubx_payload_valset*>(4, &GNS)); //SBAS
@@ -376,7 +377,7 @@ int main(int argc, char **argv)
 			for(int i=0; i < valueId_map.size();){
 					ubx_cfg(pfd[0].fd,valueId_map[i]);
 					usleep(250000);
-					if(parseUBX(pfd))
+					// if(parseUBX(pfd))
 						i++;
 			}
 			ROS_INFO("CONFIGURED");
