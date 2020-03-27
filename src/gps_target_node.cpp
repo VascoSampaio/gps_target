@@ -103,7 +103,7 @@ void ubx_cfg(int fd, ubx_payload_valset* valset){
 	buf[1]  = 0x62; /*Header sync2*/
 	buf[2]  = 0x06; /*class ID: CFG*/
 	buf[3]  = 0x8a;
-	buf[4]  = sizeof(valset);
+	buf[4]  = write_size-8;
 	buf[5]  = 0;    /*lenght MSB*/
 	buf[6]  = 0x00; //version
 	buf[7]  = 0x01; //layers
