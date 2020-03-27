@@ -373,8 +373,8 @@ int main(int argc, char **argv)
 			ROS_INFO("Successfull %s", portName_.c_str());
 	
 		if (!configured){
-			for(int i=0; i < 4;){//valueId_map.size();){
-					// ubx_cfg(pfd[0].fd,valueId_map[i]);
+			for(int i=0; i < valueId_map.size();){
+					ubx_cfg(pfd[0].fd,valueId_map[i]);
 					usleep(250000);
 					if(parseUBX(pfd))
 						i++;
