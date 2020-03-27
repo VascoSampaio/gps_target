@@ -313,6 +313,7 @@ int main(int argc, char **argv)
 	static std::string portName_;
 	int product_id, vendor_id, sizer = 0;
 	bool configured = false;
+	std::map<int, ubx_payload_valset*> valueId_map;
 
 	ubx_payload_valset rate{0x30210001, "rate", (uint16_t) pnh.param("rate",100)};
 	ubx_payload_valset RTCM{0x10770004,"RTCM", (char) 1};
@@ -327,19 +328,19 @@ int main(int argc, char **argv)
 	// ubx_payload_valset<char> GGA{0x209100bd,0,"GGA"};
 
 //CREATE MAP
-	// valueId_map.insert(std::make_pair(0, &rate)); //RATE
-	// valueId_map.insert(std::make_pair(0,&GSA));
-	// valueId_map.insert(std::make_pair(1, &RTCM)); //USBINPROT-RTCM
-	// valueId_map.insert(std::make_pair(2, &DGNSSTO)); //DGNSSTO
-	// valueId_map.insert(std::make_pair(3, &S_BAS)); //SBAS
-	// valueId_map.insert(std::make_pair(4, &GNS)); //SBAS
-	// valueId_map.insert(std::make_pair(5, &GGA));
-	// valueId_map.insert(std::make_pair(6, &VTG));
-	// valueId_map.insert(std::make_pair(7, &RMC));
-	// valueId_map.insert(std::make_pair(8, &GSV));
-	// valueId_map.insert(std::make_pair(9, &GNS)); 
-	// valueId_map.insert(std::make_pair(10,&GLL)); 
-	// valueId_map.insert(std::make_pair(11,&GSA));
+	valueId_map.insert(std::pair<int, ubx_payload_valset*>(0, &rate)); //RATE
+	// valueId_map.insert(std::pair<int, ubx_payload_valset*>(0,&GSA));
+	// valueId_map.insert(std::pair<int, ubx_payload_valset*>(1, &RTCM)); //USBINPROT-RTCM
+	// valueId_map.insert(std::pair<int, ubx_payload_valset*>(2, &DGNSSTO)); //DGNSSTO
+	// valueId_map.insert(std::pair<int, ubx_payload_valset*>(3, &S_BAS)); //SBAS
+	// valueId_map.insert(std::pair<int, ubx_payload_valset*>(4, &GNS)); //SBAS
+	// valueId_map.insert(std::pair<int, ubx_payload_valset*>(5, &GGA));
+	// valueId_map.insert(std::pair<int, ubx_payload_valset*>(6, &VTG));
+	// valueId_map.insert(std::pair<int, ubx_payload_valset*>(7, &RMC));
+	// valueId_map.insert(std::pair<int, ubx_payload_valset*>(8, &GSV));
+	// valueId_map.insert(std::pair<int, ubx_payload_valset*>(9, &GNS)); 
+	// valueId_map.insert(std::pair<int, ubx_payload_valset*>(10,&GLL)); 
+	// valueId_map.insert(std::pair<int, ubx_payload_valset*>(11,&GSA));
 
 	std::signal(SIGINT, signalHandler);
 
