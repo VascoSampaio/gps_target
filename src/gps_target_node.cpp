@@ -80,38 +80,40 @@ void ubx_cfg(int fd, ubx_payload_valset* valset){
 
 	switch(type_id){
 		case 'c':
-			write_size = 13;
+			write_size = 17;
 			buf = (unsigned char*) malloc (write_size);
-			memmove(buf + 10, &(boost::get<char>(valset->idValue)), sizeof(boost::get<char>(valset->idValue)));
+			memmove(buf + 14, &(boost::get<char>(valset->idValue)), sizeof(boost::get<char>(valset->idValue)));
 			break;
 		case 't':
-			write_size = 14;
+			write_size = 18;
 			buf = (unsigned char*) malloc (write_size);
-			memmove(buf + 10, &(boost::get<uint16_t>(valset->idValue)), sizeof(boost::get<uint16_t>(valset->idValue)));
+			memmove(buf + 14, &(boost::get<uint16_t>(valset->idValue)), sizeof(boost::get<uint16_t>(valset->idValue)));
 			break;
 		case 'i':
-			write_size = 16;
+			write_size = 20;
 			buf = (unsigned char*) malloc (write_size);
-			memmove(buf + 10, &(boost::get<int>(valset->idValue)), sizeof(boost::get<int>(valset->idValue)));
+			memmove(buf + 14, &(boost::get<int>(valset->idValue)), sizeof(boost::get<int>(valset->idValue)));
 			break;
 		default:
 			buf = (unsigned char*) malloc (write_size);
 			break;
 	}
 
-	buf[0] = 0xb5; /*Header sync1*/
-	buf[1] = 0x62; /*Header sync2*/
-	buf[2] = 0x06; /*class ID: CFG*/
-	buf[3] = 0x8a;
-	buf[4] = sizeof(valset);
-	buf[5] = 0;    /*lenght MSB*/
-	buf[6] = 0x00; //version
-	buf[7] = 0x01; //layers
-	buf[8] = 0x00; //reserved
-	buf[6] = valset->keyValue & 0xFF; 
-	buf[7] = (valset->keyValue >>  8) & 0xFF;
-	buf[8] = (valset->keyValue >> 16) & 0xFF;
-	buf[9] = (valset->keyValue >> 24) & 0xFF;
+	buf[0]  = 0xb5; /*Header sync1*/
+	buf[1]  = 0x62; /*Header sync2*/
+	buf[2]  = 0x06; /*class ID: CFG*/
+	buf[3]  = 0x8a;
+	buf[4]  = sizeof(valset);
+	buf[5]  = 0;    /*lenght MSB*/
+	buf[6]  = 0x00; //version
+	buf[7]  = 0x01; //layers
+	buf[8]  = 0x00; //reserved
+	buf[9]  = 0x00; //reserved
+	buf[10] = valset->keyValue & 0xFF; 
+	buf[11] = (valset->keyValue >>  8) & 0xFF;
+	buf[12] = (valset->keyValue >> 16) & 0xFF;
+	buf[13] = (valset->keyValue >> 24) & 0xFF;
+
 
      
 	ubx_checksum(buf + 2, write_size-4, buf + write_size - 2);	
