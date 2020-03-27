@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<project>                                  
+  <executable name="dist/default/debug/gps_target_PIC.X.debug.elf">                 
+    <memory name="program">                 
+      <units>bytes</units>                 
+      <length>16480</length>                 
+      <used>4432</used>                     
+      <free>12048</free>                     
+    </memory>                              
+    <memory name="data">              
+      <units>bytes</units>                 
+      <length>66048</length>                 
+      <used>1132</used>                     
+      <free>64916</free>                     
+    </memory>                              
+  </executable>                            
+</project>                                 
