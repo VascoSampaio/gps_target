@@ -50,7 +50,7 @@ static int rtcm_open(const char *tty, int interrupt_min)
 /*
  * Calculate UBX ckecksum for LEN bytes of data pointed by DATA
  */
-static bool ubx_checksum(const unsigned char *data,  unsigned len, unsigned char ck[2], unsigned char comparator = 0)
+static bool ubx_checksum(const unsigned char *data,  unsigned len, unsigned char ck[2], unsigned char comparator_a = 0, unsigned char comparator_b = 0)
 {
 	const unsigned char *buffer = data;
 	unsigned char ck_a = 0;
@@ -61,10 +61,13 @@ static bool ubx_checksum(const unsigned char *data,  unsigned len, unsigned char
 		ck_b += ck_a;				
 	}
 
-	ck[0] = ck_a;
-	ck[1] = ck_b;
+	if (ck != nullptr){
+		ck[0] = ck_a;
+		ck[1] = ck_b;
+	}
 
-	if(comparator == ck_a || comparator == ck_b) {
+	// std::cout <<(int)ck_a << " " << (int)comparator << "comparator \n";
+	if(comparator_a == ck_a && comparator_b == ck_b) {
 		return true;
 	}
 	return false;
@@ -80,6 +83,7 @@ void ubx_cfg(int fd, ubx_payload_valset* valset){
 	
 	uint8_t write_size = 10;
 	unsigned char* buf;
+	// char type_id = valset->idValue.type().name()[0];
 
 	switch(valset->idValue.type().name()[0]){
 		case 'h':
@@ -242,8 +246,7 @@ static bool getNMEA(struct pollfd* pf){
 		unsigned char crc  = 0;
 		enum {START_WAIT, RECEIVING_NMEA, RECEIVING_UBX, RECEIVING_UBX_PAYLOAD, MSG_RECEIVED_NMEA,MSG_RECEIVED_UBX} 
 		state = START_WAIT; 
-		char msg_id = -1, msg_clas= -1;
-		int msg_lgt= -1;
+		uint16_t msg_lgt;
 
 		while(getbyte(pf, buf,rp, &n, BLEN) !=n){
 			switch(state){
@@ -256,7 +259,6 @@ static bool getNMEA(struct pollfd* pf){
 						if(getbyte(pf, buf,rp, &n, BLEN) !=n){
 							if(*(rp-1) == 0x62){
 								ubxPtr = ubxBuffer;		// Start character received...
-								msg_lgt = msg_id = msg_clas = -1;
 								state = RECEIVING_UBX;								
 							}
 						}
@@ -265,7 +267,12 @@ static bool getNMEA(struct pollfd* pf){
        		   	case RECEIVING_NMEA:                       // Message Start received
        		      	if(*(rp-1) == '*'){              // If end of message...
 						if (hex_decode(rp,2, &crc)){
-							state = MSG_RECEIVED_NMEA;    // indicate we're done - don't process any more character until														  
+							std::cout <<"nmea: ";
+							for(unsigned char* last = nmeaPtr;((nmeaPtr)-nmeaBuffer) > 0 ;)
+				 	 			std::cout << nmeaBuffer[last-nmeaPtr--];
+				 			std::cout << "   " << (int)(nmeaPtr-nmeaBuffer) << "\n";
+				  			parseNMEA();
+							state  = START_WAIT;														  
 							break;
 						}
 						state  = START_WAIT;
@@ -279,7 +286,7 @@ static bool getNMEA(struct pollfd* pf){
        		        break;
 					   
 				case RECEIVING_UBX:                  // Message Start received
-       		      	if(msg_clas == -1)
+       		      	/*if(msg_clas == -1)
 						*(ubxPtr++) = msg_clas = *(rp-1);
 					else if(msg_id == -1)             // If end of message...
 						*(ubxPtr++) = msg_id = *(rp-1);
@@ -290,11 +297,17 @@ static bool getNMEA(struct pollfd* pf){
 						msg_lgt |= (*(rp-1) <<  8);
 						state = RECEIVING_UBX_PAYLOAD;
 						// std::cout <<std::hex<< " " << (int)ubxBuffer[0]<< " " << (int)ubxBuffer[1]<< " " << (int)ubxBuffer[2] << " " <<(int)ubxBuffer[3];
+					}*/
+					*(ubxPtr++) = *(rp-1);
+					if ((int)(ubxPtr - ubxBuffer) == 4){
+						msg_lgt = *(ubxPtr-2) | *(ubxPtr-1) << 8;
+						state = RECEIVING_UBX_PAYLOAD;
 					}
+
 					break;
 						
 				case RECEIVING_UBX_PAYLOAD:	
-					if(ubxPtr - ubxBuffer -4< msg_lgt){
+					/*if(ubxPtr - ubxBuffer -4< msg_lgt){
 						*(ubxPtr++) = *(rp-1);	
 					}
 					else{
@@ -314,10 +327,23 @@ static bool getNMEA(struct pollfd* pf){
 						else{
 							state = START_WAIT;
 						}
-					}		
+					}*/
+					*(ubxPtr++) = *(rp-1);	
+					if(ubxPtr - ubxBuffer - 4 == msg_lgt + 2){
+						if (ubx_checksum(ubxBuffer,msg_lgt+4,nullptr, *(ubxPtr-2), *(ubxPtr-1))){
+							ubxPtr = ubxBuffer;
+							std::cout <<"UBX: ";
+							for(;(ubxPtr-ubxBuffer) < msg_lgt+6;)
+								std::cout <<std::hex<< " " << (int)*(ubxPtr++);
+				 			std::cout << "  DONE  "  << (int)(ubxPtr - ubxBuffer) << "\n";
+							// parseUBX();
+						}
+						state = START_WAIT;
+					}
+
 					break;
 
-			  	case MSG_RECEIVED_NMEA:
+			  	/*case MSG_RECEIVED_NMEA:
 					std::cout <<"nmea: ";
 					for(unsigned char* last = nmeaPtr;((nmeaPtr)-nmeaBuffer) > 0 ;)
 				 	 	std::cout << nmeaBuffer[last-nmeaPtr--];
@@ -334,7 +360,7 @@ static bool getNMEA(struct pollfd* pf){
 				 	std::cout << "  DONE  "  << (int)(ubxPtr - ubxBuffer) << "\n";
 					// parseUBX();
 					state  = START_WAIT;
-					break;					
+					break;*/					
 			}
        	}  	
 	return false;
