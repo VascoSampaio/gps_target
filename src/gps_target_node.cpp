@@ -64,7 +64,6 @@ static bool ubx_checksum(const unsigned char *data,  unsigned len, unsigned char
 	ck[0] = ck_a;
 	ck[1] = ck_b;
 
-	// std::cout <<(int)ck_a << " " << (int)comparator << "comparator \n";
 	if(comparator == ck_a || comparator == ck_b) {
 		return true;
 	}
@@ -81,7 +80,6 @@ void ubx_cfg(int fd, ubx_payload_valset* valset){
 	
 	uint8_t write_size = 10;
 	unsigned char* buf;
-	// char type_id = valset->idValue.type().name()[0];
 
 	switch(valset->idValue.type().name()[0]){
 		case 'h':
