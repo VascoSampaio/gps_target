@@ -286,50 +286,17 @@ static bool getNMEA(struct pollfd* pf){
        		        break;
 					   
 				case RECEIVING_UBX:                  // Message Start received
-       		      	/*if(msg_clas == -1)
-						*(ubxPtr++) = msg_clas = *(rp-1);
-					else if(msg_id == -1)             // If end of message...
-						*(ubxPtr++) = msg_id = *(rp-1);
-					else if(msg_lgt == -1)              // If end of message...
-						*(ubxPtr++) = msg_lgt = *(rp-1);
-					else{
-						*(ubxPtr++) = (*(rp-1) <<  8);
-						msg_lgt |= (*(rp-1) <<  8);
-						state = RECEIVING_UBX_PAYLOAD;
-						// std::cout <<std::hex<< " " << (int)ubxBuffer[0]<< " " << (int)ubxBuffer[1]<< " " << (int)ubxBuffer[2] << " " <<(int)ubxBuffer[3];
-					}*/
 					*(ubxPtr++) = *(rp-1);
-					if ((int)(ubxPtr - ubxBuffer) == 4){
-						msg_lgt = *(ubxPtr-2) | *(ubxPtr-1) << 8;
+					if ((ubxPtr - ubxBuffer) == 4){ //PROBLEMA: um pointer  menos o outro já dá int. não preciasas de fazer cast
+						msg_lgt = *(ubxPtr-2) | *(ubxPtr-1) << 8; //PROBLEMA: SE TROCARES O BUFFER NAO GARANTES QUE EXISTA (ubxPtr-2)
 						state = RECEIVING_UBX_PAYLOAD;
 					}
 
 					break;
 						
 				case RECEIVING_UBX_PAYLOAD:	
-					/*if(ubxPtr - ubxBuffer -4< msg_lgt){
-						*(ubxPtr++) = *(rp-1);	
-					}
-					else{
-						if (ubx_checksum(ubxBuffer,msg_lgt+4,ubxBuffer+4+msg_lgt,*(rp-1))){
- 							if(getbyte(pf, buf,rp, &n, BLEN) !=n){
-								if (*(ubxBuffer+5+msg_lgt) == *(rp-1)){
- 									state = MSG_RECEIVED_UBX;
-								}
-								else{
-									state = START_WAIT;
-								}		
-							}
-							else{
-								state = START_WAIT;
-							}	
-						}
-						else{
-							state = START_WAIT;
-						}
-					}*/
 					*(ubxPtr++) = *(rp-1);	
-					if(ubxPtr - ubxBuffer - 4 == msg_lgt + 2){
+					if(ubxPtr - ubxBuffer - 4 == msg_lgt){ //PROBLEMA não é -6. é só - 4. TIras os class, id e length 
 						if (ubx_checksum(ubxBuffer,msg_lgt+4,nullptr, *(ubxPtr-2), *(ubxPtr-1))){
 							ubxPtr = ubxBuffer;
 							std::cout <<"UBX: ";
@@ -343,24 +310,6 @@ static bool getNMEA(struct pollfd* pf){
 
 					break;
 
-			  	/*case MSG_RECEIVED_NMEA:
-					std::cout <<"nmea: ";
-					for(unsigned char* last = nmeaPtr;((nmeaPtr)-nmeaBuffer) > 0 ;)
-				 	 	std::cout << nmeaBuffer[last-nmeaPtr--];
-				 	std::cout << "   " << (int)(nmeaPtr-nmeaBuffer) << "\n";
-				  	parseNMEA();
-					state  = START_WAIT;
-					break;
-
-				case MSG_RECEIVED_UBX:
-					ubxPtr = ubxBuffer;
-					std::cout <<"UBX: ";
-					for(;(ubxPtr-ubxBuffer) < msg_lgt+6;)
-						std::cout <<std::hex<< " " << (int)*(ubxPtr++);
-				 	std::cout << "  DONE  "  << (int)(ubxPtr - ubxBuffer) << "\n";
-					// parseUBX();
-					state  = START_WAIT;
-					break;*/					
 			}
        	}  	
 	return false;
