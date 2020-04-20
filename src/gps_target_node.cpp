@@ -66,7 +66,7 @@ static bool ubx_checksum(const unsigned char *data,  unsigned len, unsigned char
 		ck[1] = ck_b;
 	}
 
-	// std::cout <<(int)ck_a << " " << (int)comparator << "comparator \n";
+	//std::cout <<(int)ck_a << " " << (int)ck_b << "comparator \n";
 	if(comparator_a == ck_a && comparator_b == ck_b) {
 		return true;
 	}
@@ -156,38 +156,77 @@ static unsigned char getbyte(struct pollfd* pf, unsigned char rbuf[], unsigned c
 	return *rp++;
 }
 
-static bool parseUBX(struct pollfd* pf){
+static bool parseUBX(unsigned char buf[], int len){
 
-	uint8_t n = 0, BLEN = 100, MLEN = 8;
-	unsigned char buf[BLEN], mesg[MLEN-2];
-	unsigned char *rp = &buf[BLEN], *sync;
-	int count=0;
+	// uint8_t n = 0, BLEN = 100, MLEN = 8;
+	// unsigned char buf[BLEN], mesg[MLEN-2];
+	// unsigned char *rp = &buf[BLEN], *sync;
+	// int count=0;
 
-	while (getbyte(pf, buf,rp, &n, BLEN) && (rp - buf) != n){
-		if (*(rp-1) == 0Xb5){ //0XB5 for unsigned char
-			sync = rp;
-			if(*rp == 0X62){ //0X62 for unsigned char
-			rp++;
-				for(; (rp-sync) <MLEN;){
-					// std::cout <<rp-2-sync << " " << (int)getbyte(pf, buf,rp, &n, BLEN) << " " << (int)message_checksum[rp-1-sync] << "\n";
-					if(getbyte(pf, buf,rp, &n, BLEN) != message_checksum[rp-2-sync]){
-						// std::cout << (int)message_checksum[rp-3-sync] << " expected\n";
-						std::cout << "Expected " << (int)message_checksum[rp-2-sync];
-						std::cout << " and got " << (int)*(rp-1) << " at position " << (rp-2-sync) << "\n";
-						// std::cout <<  (int*)rp << "\n";  
-						// rp--;
-						return false;
+	// //std::cout << "AQUIIII\n\n"; 
+	// while (getbyte(pf, buf,rp, &n, BLEN) && (rp - buf) != n){
+	// 	if (*(rp-1) == 0Xb5){ //0XB5 for unsigned char
+	// 		sync = rp;
+	// 		if(*rp == 0X62){ //0X62 for unsigned char
+	// 		rp++;
+	// 			for(; (rp-sync) <MLEN;){
+	// 				// std::cout <<rp-2-sync << " " << (int)getbyte(pf, buf,rp, &n, BLEN) << " " << (int)message_checksum[rp-1-sync] << "\n";
+	// 				if(getbyte(pf, buf,rp, &n, BLEN) != message_checksum[rp-2-sync]){
+	// 					// std::cout << (int)message_checksum[rp-3-sync] << " expected\n";
+	// 					std::cout << "Expected " << (int)message_checksum[rp-2-sync];
+	// 					std::cout << " and got " << (int)*(rp-1) << " at position " << (rp-2-sync) << "\n";
+	// 					// std::cout <<  (int*)rp << "\n";  
+	// 					// rp--;
+	// 					return false;
+	// 				}
+	// 			}
+	// 			std::cout <<"\n";
+	// 			return true;							
+	// 		}
+	// 		else
+	// 			continue;
+	// 	}            		
+	// }
+	// // std::cout << "(int)\n";
+	// return false;
+
+	uint8_t msg_class = buf[0];
+	uint8_t msg_id = buf[1];
+	
+	switch(msg_class){
+		case 0x05:                 	//UBX-ACK
+			switch(msg_id){
+				case 0x01:			//ACK
+					// for(int i = 0; i < 8; i++)
+					// {
+					// 	std::cout <<std::hex<< " " << (int) message_checksum[i] << " ";
+					// }
+					for(int i = 0; i < 8; i++)
+					{
+						if (buf[i] != message_checksum[i]) {
+							ROS_WARN("WRONG ACK MESSAGE");
+							return false;
+						}
 					}
-				}
-				std::cout <<"\n";
-				return true;							
+					count_cfg++;
+					ROS_WARN("\nCORRECT %d ACK MESSAGE", count_cfg);
+					return true;
+					break;
+
+				case 0x00:			//NACK
+					ROS_WARN("RECEIVED NACK");
+					break;
 			}
-			else
-				continue;
-		}            		
+		case 0x0a:					//UBX-MON
+			switch(msg_id){
+				case 0x36:			//UBX-MON-COMMS
+				ROS_WARN("RECEIVED UBX MON");
+				break;
+			}
 	}
-	// std::cout << "(int)\n";
-	return false;
+
+	
+
 }
 
 void parseNMEA(){
@@ -196,7 +235,7 @@ void parseNMEA(){
 	gps_gns.latitude = gps_gns.longitude = 0; 
 
 	while(*++rp != ','){}
-		// std::cout << *rp;
+		std::cout << *rp;
 
 	// std::cout << "\n";
 	for(;*++rp != ',';){
@@ -224,9 +263,9 @@ void parseNMEA(){
 // 
 	rp++;
 	for(;*++rp != ',';){
-			// std::cout << *rp;
+			std::cout << *rp;
 	}
-	// std::cout << "\n";
+	std::cout << "\n";
 // 
 
 	actual_coordinate_geo.latitude  = gps_gns.latitude;
@@ -237,6 +276,8 @@ void parseNMEA(){
 	// ros::spinOnce();
 	
 }
+
+
 
 static bool getNMEA(struct pollfd* pf){
 
@@ -249,6 +290,7 @@ static bool getNMEA(struct pollfd* pf){
 		uint16_t msg_lgt;
 
 		while(getbyte(pf, buf,rp, &n, BLEN) !=n){
+			//std::cout << "feifeijfeifj" << *(rp-1);
 			switch(state){
        		   	case START_WAIT:               		 // Waiting for start of message
 					if(*(rp-1) == '$'){
@@ -267,10 +309,10 @@ static bool getNMEA(struct pollfd* pf){
        		   	case RECEIVING_NMEA:                       // Message Start received
        		      	if(*(rp-1) == '*'){              // If end of message...
 						if (hex_decode(rp,2, &crc)){
-							std::cout <<"nmea: ";
-							for(unsigned char* last = nmeaPtr;((nmeaPtr)-nmeaBuffer) > 0 ;)
-				 	 			std::cout << nmeaBuffer[last-nmeaPtr--];
-				 			std::cout << "   " << (int)(nmeaPtr-nmeaBuffer) << "\n";
+							//std::cout <<"nmea: ";
+							//for(unsigned char* last = nmeaPtr;((nmeaPtr)-nmeaBuffer) > 0 ;)
+				 	 			//std::cout << nmeaBuffer[last-nmeaPtr--];
+				 			//std::cout << "   " << (int)(nmeaPtr-nmeaBuffer) << "\n";
 				  			parseNMEA();
 							state  = START_WAIT;														  
 							break;
@@ -287,8 +329,8 @@ static bool getNMEA(struct pollfd* pf){
 					   
 				case RECEIVING_UBX:                  // Message Start received
 					*(ubxPtr++) = *(rp-1);
-					if ((ubxPtr - ubxBuffer) == 4){ //PROBLEMA: um pointer  menos o outro já dá int. não preciasas de fazer cast
-						msg_lgt = *(ubxPtr-2) | *(ubxPtr-1) << 8; //PROBLEMA: SE TROCARES O BUFFER NAO GARANTES QUE EXISTA (ubxPtr-2)
+					if ((ubxPtr - ubxBuffer) == 4){ 
+						msg_lgt = *(ubxPtr-2) | *(ubxPtr-1) << 8; 
 						state = RECEIVING_UBX_PAYLOAD;
 					}
 
@@ -296,14 +338,14 @@ static bool getNMEA(struct pollfd* pf){
 						
 				case RECEIVING_UBX_PAYLOAD:	
 					*(ubxPtr++) = *(rp-1);	
-					if(ubxPtr - ubxBuffer - 4 == msg_lgt){ //PROBLEMA não é -6. é só - 4. TIras os class, id e length 
+					if(ubxPtr - ubxBuffer - 6 == msg_lgt){ 
 						if (ubx_checksum(ubxBuffer,msg_lgt+4,nullptr, *(ubxPtr-2), *(ubxPtr-1))){
 							ubxPtr = ubxBuffer;
 							std::cout <<"UBX: ";
 							for(;(ubxPtr-ubxBuffer) < msg_lgt+6;)
 								std::cout <<std::hex<< " " << (int)*(ubxPtr++);
 				 			std::cout << "  DONE  "  << (int)(ubxPtr - ubxBuffer) << "\n";
-							// parseUBX();
+							parseUBX(ubxBuffer, msg_lgt+6);
 						}
 						state = START_WAIT;
 					}
@@ -315,6 +357,13 @@ static bool getNMEA(struct pollfd* pf){
 	return false;
 }
  
+static void loop_get(struct pollfd* pf){
+	
+	
+	while(ros::ok()){
+		getNMEA(pf);
+	}
+}
 void main_with_exceptions(std::string &port_name, int vid, int pid){	
     libusbp::device device = libusbp::find_device_with_vid_pid(vid, pid);
     if (device){
@@ -363,7 +412,8 @@ int main(int argc, char **argv)
 	ros::NodeHandle pnh("~");
 	static std::string portName_;
 	int product_id, vendor_id, sizer = 0;
-	bool configured = false, port_opened = false;
+	bool configured = false;
+	bool port_opened = false;
 
 	std::signal(SIGINT, signalHandler);
 
@@ -444,13 +494,16 @@ int main(int argc, char **argv)
 	// valset_map.insert(std::make_pair(14,&NAV));
 
 	timenow = ros::Time::now().toSec();
-	ros::AsyncSpinner spinner(1);
+	ros::AsyncSpinner spinner(2);
 	spinner.start();
+	int i = 0;
+	std::mutex pfd_lock;
+	
 
-	  while (ros::ok()) {
-		if(!port_opened){
+	  
+		while(!port_opened){
 			main_with_exceptions(portName_, vendor_id, product_id);
-			// portName_= "/dev/ttyACM0";
+			portName_= "/dev/pts/2";
 			pfd[0].fd = rtcm_open(portName_.c_str(),buf_size);
 			if (pfd[0].fd < 0) {
 				ROS_ERROR("RTCM: error opening %s", portName_.c_str());
@@ -460,26 +513,33 @@ int main(int argc, char **argv)
 			else {
 				ROS_INFO("PORT OPENED %s with VMIN %d", portName_.c_str(), buf_size);
 				port_opened = true;
+				
+				
 			}
 		} 
+
+		std::thread th1(loop_get, pfd);
+				
 		// else if (NMEA_IN.idValue != 0){
 		// 	ROS_INFO("Changing VMIN OPENED %s", portName_.c_str());
 		// 	pfd[0].fd = rtcm_open(portName_.c_str(),80);
 		// }
-		else {
-			ROS_INFO("Kepping VMIN OPENED %s", portName_.c_str());
-			pfd[0].fd = rtcm_open(portName_.c_str(),buf_size);
-		}
+		
+			// ROS_INFO("Kepping VMIN OPENED %s", portName_.c_str());
+			// pfd_lock.lock();
+			// pfd[0].fd = rtcm_open(portName_.c_str(),buf_size);
+			// std::cout << pfd[0].fd << "PFD\n";
+			// pfd_lock.unlock();
+			//th1.join();
+		
+
+		//getNMEA(pfd);
 
 		if (!configured){
-			int i;
-			for(i=0; i < valset_map.size();){
-				ubx_cfg(pfd[0].fd,valset_map[i]);
+			//th1.detach();
+			for(count_cfg=0; count_cfg < valset_map.size();){
+				ubx_cfg(pfd[0].fd,valset_map[count_cfg]);
 				usleep(250000);
-				if(parseUBX(pfd)){
-					std::cout << "Configured "<< valset_map[i]->item << "\n";
-					i++;
-				}
 			}
 			ROS_INFO("CONFIGURED");
 			configured = true;
@@ -487,15 +547,29 @@ int main(int argc, char **argv)
 			if(write(pfd[0].fd, &start_stream , 1) != 1)
 				ROS_ERROR("PIC32: FAILED TO START NMEA STREAM");
 		 }
-		else{
+		//else{
+
 			sub_rtcm = n.subscribe<mavros_msgs::RTCM>("/rtcm_stream",3, std::bind(rtcm_streamer, std::placeholders::_1, pfd, sizer));
-			while(ros::ok()) {
- 				if(!getNMEA(pfd)){
-					// break;
-				 } 					
-  	 		}
-		}
+			th1.join();
+			 //while(ros::ok()) {
+ 		// 		if(!getNMEA(pfd)){
+			// 		// break;
+			// 	 }
+			 	// if (i == 1000000000){
+			 	// 	std::cout << "hdjkjfhjdkjfhdjk\n";
+			 	// 	close(pfd[0].fd);
+			 	// 	pfd[0].fd = rtcm_open(portName_.c_str(),buf_size);
+			 	// 	i = 0;
+			 	// }
+			 	// i++;
+			//continue; 					
+  	 		//}
+		//}
+  	 		
+		
 		close(pfd[0].fd);
+		
+		return 0;
 	}
-	return 0;
-}		
+	
+		

@@ -3,7 +3,7 @@
 		<arg name="prod" default="24577"/>
 		<arg name="rate" default="100"/>
 		<arg name="NMEA" default="1"/>
-		<arg name="config" default="True"/>
+		<arg name="config" default="False"/>
 
 	<node pkg="gps_target" name="target" type="gps_target_node" output="screen">
 		<param name="vend" value="$(arg vend)"/>

@@ -15,7 +15,9 @@
 #include <iostream>
 #include <unistd.h>
 #include <csignal>
-#include<map>
+#include <map>
+#include <thread>
+#include <mutex>
 #include "boost/variant.hpp"
 
 #include <multidrone_kml_parser/geographic_to_cartesian.hpp>
@@ -30,6 +32,8 @@ unsigned char   ubxBuffer[60];
 unsigned char*  nmeaPtr = nmeaBuffer;
 unsigned char*  ubxPtr = ubxBuffer;
 uint8_t         buf_size = 80;
+uint8_t         count_cfg = 0;
+
 
  /* GNS-GPS*/
 struct gps_gns_payload{ 
