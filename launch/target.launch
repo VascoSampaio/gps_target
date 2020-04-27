@@ -4,14 +4,28 @@
 		<arg name="rate" default="100"/>
 		<arg name="NMEA" default="1"/>
 		<arg name="config" default="False"/>
+		<arg name="debug" default="False"/>
 
-	<node pkg="gps_target" name="target" type="gps_target_node" output="screen">
-		<!-- <param name="vend" value="$(arg vend)"/> -->
-		<!-- <param name="prod" value="$(arg prod)"/> -->
-		<param name="rate" value="$(arg rate)"/>
-		<param name="NMEA" value="$(arg NMEA)"/>
-		<param name="config" value="$(arg config)"/>
-		<rosparam param="origin_geo">[38.7319435, -9.1315461, 0]</rosparam>
-	</node>
+	<group if="$(eval arg('debug') == 0)">
+    	<node pkg="gps_target" name="target" type="gps_target_node" output="screen">
+			<param name="vend" value="$(arg vend)"/>
+			<param name="prod" value="$(arg prod)"/>
+			<param name="rate" value="$(arg rate)"/>
+			<param name="NMEA" value="$(arg NMEA)"/>
+			<param name="config" value="$(arg config)"/>
+			<rosparam param="origin_geo">[38.7319435, -9.1315461, 0]</rosparam>
+		</node>
+  	</group>
+	
+	<group if="$(eval arg('debug') == 1)">
+    	<node pkg="gps_target" name="target" type="gps_target_node_debug" output="screen">
+			<param name="vend" value="$(arg vend)"/>
+			<param name="prod" value="$(arg prod)"/>
+			<param name="rate" value="$(arg rate)"/>
+			<param name="NMEA" value="$(arg NMEA)"/>
+			<param name="config" value="$(arg config)"/>
+			<rosparam param="origin_geo">[38.7319435, -9.1315461, 0]</rosparam>
+		</node>
+  	</group>
 
 </launch>

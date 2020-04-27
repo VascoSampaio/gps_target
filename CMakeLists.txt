@@ -30,10 +30,20 @@ include_directories(
 
 ## Declare a C++ executable. With catkin_make all packages are built within a single CMake context. The recommended prefix ensures that target names across packages don't collide
 add_executable(${PROJECT_NAME}_node src/gps_target_node.cpp)
+
+
+add_compile_options(-DDEBUG)
+add_executable(${PROJECT_NAME}_node_debug src/gps_target_node.cpp)
+
 add_executable(read_write_node src/read_write.cpp)
 
-## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
+  ${catkin_LIBRARIES}
+   usbp-1
+)
+
+## Specify libraries to link a library or executable target against
+target_link_libraries(${PROJECT_NAME}_node_debug
   ${catkin_LIBRARIES}
    usbp-1
 )
