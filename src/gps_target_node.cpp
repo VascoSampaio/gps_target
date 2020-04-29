@@ -165,7 +165,7 @@ static unsigned char getbyte(struct pollfd* pf, unsigned char rbuf[], unsigned c
         	rp = rbuf;
 			// std::cout <<"\nBUFFER \n";
 			// for (int i=0; i < *bufcnt; i++)
-				// std::cout << std::hex << (int)rbuf[i] << " "; //std::cout << rbuf[i];
+			// 	std::cout << std::hex << (int)rbuf[i] << " "; //std::cout << rbuf[i];
 			// std::cout <<"    " << (int)*bufcnt << " buffer\n\n";
 		}
     }
@@ -349,9 +349,7 @@ static bool getMessage(struct pollfd* pf){
 						}
 						state = START_WAIT;
 					}
-
 					break;
-
 			}
        	}  	
 	return false;
@@ -418,8 +416,8 @@ int main(int argc, char **argv)
 
 	pub_gps  = n.advertise<geometry_msgs::Point32>("/gps_message",1);
 
-	pnh.param<int>("vend", vendor_id, 0x0403);
-    pnh.param<int>("prod", product_id,0x6001);
+	pnh.param<int>("vend", vendor_id,  0x1546); //0x0403
+    pnh.param<int>("prod", product_id, 0x01a8); //0x6001
 	pnh.param<bool>("config", configured, false);
 
 	std::vector<double> origin_geo_vector;
@@ -491,14 +489,13 @@ int main(int argc, char **argv)
 			pfd[0].fd = rtcm_open(portName_.c_str(),buf_size);
 
 			if (pfd[0].fd < 0) {
-				ROS_ERROR("RTCM: error opening %s", portName_.c_str());
+				ROS_ERROR("GPS: error opening %s", portName_.c_str());
 				sleep(1);
 				continue;
 			}
 			else {
 				ROS_INFO("PORT OPENED %s with VMIN %d", portName_.c_str(), buf_size);
 				port_opened = true;
-				
 				
 			}
 		} 
