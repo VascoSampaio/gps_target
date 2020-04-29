@@ -21,7 +21,6 @@ std::string ubx_payload_valset::Print(){
 			return  item + " " + std::to_string(boost::get<int>(idValue)) + "\n";
 			break;
 	}
-
 }
 
 bool hex_decode(const unsigned char *in, size_t len, unsigned char *out){
@@ -235,8 +234,58 @@ void parseNMEA(){
 	double divisor = 10;
 	gps_gns.latitude = gps_gns.longitude = 0; 
 
-	// while(*++rp != ',')
+	while(*++rp != ','){
+
+	}
 	// 	std::cout << *rp;
+
+	// std::cout << "\n";
+	for(;*++rp != ',';){
+		if(*rp != '.' ){
+			gps_gns.latitude += (*rp -'0') *divisor;
+			divisor /= 10;
+		}
+	}
+	gps_gns.latitude = (int(gps_gns.latitude)+(gps_gns.latitude-int(gps_gns.latitude))*100/60); 
+	// std::cout << "\n";
+	rp +=2; divisor=100;
+	for(;*++rp != ',';){
+		if(*rp != '.' ){
+			gps_gns.longitude += (*rp -'0') *divisor;
+			// std::cout << *rp -'0';
+			divisor /= 10;
+		}
+	}
+	// std::cout << "\n";
+	if (*++rp == 'W')
+		gps_gns.longitude = -(int(gps_gns.longitude)+(gps_gns.longitude-int(gps_gns.longitude))*100/60);
+	else 
+		gps_gns.longitude = (int(gps_gns.longitude)+(gps_gns.longitude-int(gps_gns.longitude))*100/60);
+// 
+	rp++;
+	for(;*++rp != ',';){
+			//std::cout << *rp;
+	}
+	//std::cout << "\n";
+// 
+
+	actual_coordinate_geo.latitude  = gps_gns.latitude;
+	actual_coordinate_geo.longitude = gps_gns.longitude;
+	actual_coordinate_geo.altitude  = 0;
+	geometry_msgs::Point32 target_pose = multidrone::geographic_to_cartesian(actual_coordinate_geo, origin_geo_);
+	pub_gps.publish(target_pose);
+	// ros::spinOnce();
+	
+}
+
+void parsePUBX(){
+	unsigned char *rp = &nmeaBuffer[5];
+	double divisor = 10;
+	gps_gns.latitude = gps_gns.longitude = 0; 
+
+	while(*++rp != ','){
+	// 	std::cout << *rp;
+	}
 
 	// std::cout << "\n";
 	for(;*++rp != ',';){
@@ -427,8 +476,6 @@ int main(int argc, char **argv)
   	origin_geo_.altitude  = origin_geo_vector[2];
 
 	pfd[0].events = POLLIN;
-
-
 	
 	NMEA_OUT = {0x10780002, (uint16_t)pnh.param("NMEA",1),"NMEA_OUT"};
 	rate = {0x30210001, (uint16_t)pnh.param("rate",100), "rate"};
@@ -450,7 +497,6 @@ int main(int argc, char **argv)
  		baudrate= {0x40520001, (int) 115200, "baudrate"};
 	}
 	
-
 	valset_map.insert(std::make_pair(0, &GGA));
 	valset_map.insert(std::make_pair(1, &GNS));
 	valset_map.insert(std::make_pair(2, &VTG));
@@ -479,7 +525,7 @@ int main(int argc, char **argv)
 	  
 		while(!port_opened){
 			main_with_exceptions(portName_, vendor_id, product_id);
-			portName_= "/dev/pts/20";
+			portName_= "/dev/pts/18";
 			
 			if(boost::get<unsigned char>(NMEA_IN.idValue) != 0){
 				ROS_INFO("Changing VMIN");
