@@ -174,38 +174,6 @@ static unsigned char getbyte(struct pollfd* pf, unsigned char rbuf[], unsigned c
 
 static bool parseUBX(unsigned char buf[], int len){
 
-	// uint8_t n = 0, BLEN = 100, MLEN = 8;
-	// unsigned char buf[BLEN], mesg[MLEN-2];
-	// unsigned char *rp = &buf[BLEN], *sync;
-	// int count=0;
-
-	// //std::cout << "AQUIIII\n\n"; 
-	// while (getbyte(pf, buf,rp, &n, BLEN) && (rp - buf) != n){
-	// 	if (*(rp-1) == 0Xb5){ //0XB5 for unsigned char
-	// 		sync = rp;
-	// 		if(*rp == 0X62){ //0X62 for unsigned char
-	// 		rp++;
-	// 			for(; (rp-sync) <MLEN;){
-	// 				// std::cout <<rp-2-sync << " " << (int)getbyte(pf, buf,rp, &n, BLEN) << " " << (int)message_checksum[rp-1-sync] << "\n";
-	// 				if(getbyte(pf, buf,rp, &n, BLEN) != message_checksum[rp-2-sync]){
-	// 					// std::cout << (int)message_checksum[rp-3-sync] << " expected\n";
-	// 					std::cout << "Expected " << (int)message_checksum[rp-2-sync];
-	// 					std::cout << " and got " << (int)*(rp-1) << " at position " << (rp-2-sync) << "\n";
-	// 					// std::cout <<  (int*)rp << "\n";  
-	// 					// rp--;
-	// 					return false;
-	// 				}
-	// 			}
-	// 			std::cout <<"\n";
-	// 			return true;							
-	// 		}
-	// 		else
-	// 			continue;
-	// 	}            		
-	// }
-	// // std::cout << "(int)\n";
-	// return false;
-
 	uint8_t msg_class = buf[0];
 	uint8_t msg_id = buf[1];
 	unsigned char* ptr;
@@ -513,7 +481,7 @@ int main(int argc, char **argv)
 	  
 		while(!port_opened){
 			main_with_exceptions(portName_, vendor_id, product_id);
-			portName_= "/dev/pts/2";
+			portName_= "/dev/pts/20";
 			
 			if(boost::get<unsigned char>(NMEA_IN.idValue) != 0){
 				ROS_INFO("Changing VMIN");
@@ -536,21 +504,6 @@ int main(int argc, char **argv)
 		} 
 
 		std::thread th1(loop_get, pfd);
-				
-		// else if (NMEA_IN.idValue != 0){
-		// 	ROS_INFO("Changing VMIN OPENED %s", portName_.c_str());
-		// 	pfd[0].fd = rtcm_open(portName_.c_str(),80);
-		// }
-		
-			// ROS_INFO("Kepping VMIN OPENED %s", portName_.c_str());
-			// pfd_lock.lock();
-			// pfd[0].fd = rtcm_open(portName_.c_str(),buf_size);
-			// std::cout << pfd[0].fd << "PFD\n";
-			// pfd_lock.unlock();
-			//th1.join();
-		
-
-		//getNMEA(pfd);
 
 		if (!configured){
 			for(count_cfg=0; count_cfg < valset_map.size();){
