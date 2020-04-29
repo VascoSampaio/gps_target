@@ -25,6 +25,8 @@
                    projectFiles="false">
       <itemPath>Makefile</itemPath>
     </logicalFolder>
+    <itemPath>communicationLib.c</itemPath>
+    <itemPath>communicationLib.h</itemPath>
   </logicalFolder>
   <sourceRootList>
     <Elem>../../../CC1125</Elem>

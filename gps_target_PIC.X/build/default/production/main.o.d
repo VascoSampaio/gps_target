@@ -1,3 +1,7 @@
 build/default/production/main.o:  \
 main.c  \
-main.h 
+CC1125.h  \
+HardwareProfile.h  \
+ Typedefs.h  \
+main.h  \
+communicationLib.h 

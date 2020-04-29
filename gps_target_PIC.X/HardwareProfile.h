@@ -13,11 +13,11 @@ extern "C" {
 #endif
 
 #include "Typedefs.h"
-	
-	
-//LEDS
-#define LED1		LATREG(E,3)
-#define LED2		LATREG(E,4)
+    
+    //LEDS
+#define ORANGE_LED		LATREG(E,3)
+#define ORANGE_WHITE	LATREG(E,4)
+    
  
 //IO PINS
 #define IN1			PORTREG(B,9)
@@ -43,7 +43,6 @@ extern "C" {
 #define CONFIG_IOS()	{Clr(ANSELE); Clr(ANSELG); Output(TRISEbits.TRISE3); Output(TRISEbits.TRISE4); Set(LED1); Set(LED2); Output(TRISDbits.TRISD4); Set(SPI_CS); Output(CAN_DIS_TRIS); Set(CAN_DIS);}
 #define CONFIG_REMAP()	{SPI_REMAP(); CAN_REMAP();}
 
-	
 
 #ifdef	__cplusplus
 }

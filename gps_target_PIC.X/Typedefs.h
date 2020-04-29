@@ -12,7 +12,8 @@
 extern "C" {
 #endif
 
-
+#include "main.h"
+    
 typedef unsigned char byte;
 typedef unsigned short word;
 typedef unsigned int dword;

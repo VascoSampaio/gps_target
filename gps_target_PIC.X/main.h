@@ -1,6 +1,6 @@
 /* 
  * File:   main.h
- * Author: dsor
+ * Author: Vasco
  *
  * Created on 2 de Abril de 2020, 16:19
  */
