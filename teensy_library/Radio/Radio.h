@@ -18,7 +18,7 @@
 #define FIFOS 0x7F
 
 //#define APPENDED
-#define CC_MAX_PACKET_DATA_SIZE 10
+#define CC_MAX_PACKET_DATA_SIZE 9
 #define CC_PACKET (CC_MAX_PACKET_DATA_SIZE + 2)
 
 #define REG_IOCFG3 0x00
@@ -288,21 +288,6 @@
     digitalWrite(x, LOW); \
   }
 
-//SPI 0
-#define CC_RESET_SENDER 3
-#define CC_IO0_SENDER 2
-#define CC_IO1_SENDER 12
-#define SS_SENDER 10
-
-//SPI 1
-#define CC_RESET_RECEIVER 7
-#define CC_IO0_RECEIVER 22
-#define CC_IO1_RECEIVER 5
-#define CC_IO2_RECEIVER 4
-#define SS_RECEIVER     6
-#define SCK_RECEIVER   20
-#define MOSI_RECEIVER  21
-#define MISO_RECEIVER   5
 
 #define PROCESS_VAL(p) case (p):s = #p;break;
 

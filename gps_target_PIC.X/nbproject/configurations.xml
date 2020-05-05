@@ -8,6 +8,7 @@
       <itemPath>HardwareProfile.h</itemPath>
       <itemPath>Typedefs.h</itemPath>
       <itemPath>main.h</itemPath>
+      <itemPath>communicationLib.h</itemPath>
     </logicalFolder>
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"
@@ -19,14 +20,13 @@
                    projectFiles="true">
       <itemPath>main.c</itemPath>
       <itemPath>CC1125.c</itemPath>
+      <itemPath>communicationLib.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
                    projectFiles="false">
       <itemPath>Makefile</itemPath>
     </logicalFolder>
-    <itemPath>communicationLib.c</itemPath>
-    <itemPath>communicationLib.h</itemPath>
   </logicalFolder>
   <sourceRootList>
     <Elem>../../../CC1125</Elem>
@@ -42,7 +42,7 @@
         <targetPluginBoard></targetPluginBoard>
         <platformTool>PICkit3PlatformTool</platformTool>
         <languageToolchain>XC32</languageToolchain>
-        <languageToolchainVersion>2.30</languageToolchainVersion>
+        <languageToolchainVersion>2.40</languageToolchainVersion>
         <platform>2</platform>
       </toolsSet>
       <packs>
@@ -97,6 +97,7 @@
         <property key="use-cci" value="false"/>
         <property key="use-iar" value="false"/>
         <property key="use-indirect-calls" value="false"/>
+        <appendMe value="-v"/>
       </C32>
       <C32-AR>
         <property key="additional-options-chop-files" value="false"/>
@@ -192,14 +193,16 @@
         <property key="use-cci" value="false"/>
         <property key="use-iar" value="false"/>
         <property key="use-indirect-calls" value="false"/>
+        <appendMe value="-v"/>
       </C32CPP>
       <C32Global>
         <property key="common-include-directories" value=""/>
         <property key="gp-relative-option" value=""/>
-        <property key="legacy-libc" value="true"/>
+        <property key="legacy-libc" value="false"/>
         <property key="mdtcm" value=""/>
         <property key="mitcm" value=""/>
         <property key="mstacktcm" value="false"/>
+        <property key="omit-pack-options" value="1"/>
         <property key="relaxed-math" value="false"/>
         <property key="save-temps" value="false"/>
         <property key="wpo-lto" value="false"/>

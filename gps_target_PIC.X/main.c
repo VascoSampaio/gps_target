@@ -35,20 +35,6 @@
 #include "CC1125.h"
 #include "communicationLib.h"
 
-void IO_SETUP(){
-    ANSELD= 0x00; //Set as digital port
-    ANSELB= 0x00; //Set as digital port
-    
-    // 0 - output; 1 - input
-    TRISE = 0x00; //Set as output
-    TRISD = 0x14; //0b000000010100;
-    TRISB = 0x40; //0b000001000000;
-    
-    //Write to port latch
-    LATE =  0x00; //Turn on LED's 
-    
-}
-
 void __ISR(_UART_1_VECTOR, IPL7SAVEALL) UART1ISR(void){ //UART FROM PC TO GPS  - LED2 Orange
     unsigned char curChar;
     while(U1STAbits.URXDA){
@@ -75,29 +61,39 @@ void __ISR(_TIMER_1_VECTOR, IPL5SAVEALL) Timer1ISR(void){
 
 void main(){ 
 
+    byte a = 0;
     IO_SETUP(); //INITIALIZE I/O
     
    //INITIALIZE UART
-//    UART1_Initializer(115200); //baud rate =  115K    
+    //UART1_Initializer(115200); //baud rate =  115K    
     UART4_Initializer(115200);   //baud rate =  115K    
-   
-    GENERAL_INTERRUPT_SETUP(); //SETUP INTERRUPT    
-   
-    TIMER1_SETUP(); //TIMER1
-     
+    
+    GENERAL_INTERRUPT_SETUP(); //SETUP INTERRUPT 
+    //SPI1_Init();
+
+    //TIMER1_SETUP(); //TIMER1
 //    U1INT_SETUP();  //INTERRUPT UART    
-    U4INT_SETUP();
+    //U4INT_SETUP();
 //    T1INT_SETUP(); //INTERRUPT1
-    CC1125_Init(10);
-    INTEnableInterrupts();   
-    CC1125_Init(10);
     
+    CC1125_Init(10);
+    Delay_ms(10);
+    a = ReadStatus();
+    a = ReadReg(REG_RFEND_CFG1);
+    a = ReadReg(REG_RFEND_CFG0);
+    WriteStrobe(STROBE_STX);
+    Delay_ms(10);
+    //INTEnableInterrupts();   
     while (1){
-    byte c[CC_MAX_PACKET_DATA_SIZE] = {1,2,3,4,5,6,7,8,9} ; 
-//    WriteFIFO(c, 9);
-    Toggle(ORANGE_LED);
-    ShortDelay(500*US_TO_CT_TICKS);
-    
+    byte c[CC_MAX_PACKET_DATA_SIZE] = {1,2,3,4,5,6,7,8,9};
+    a = ReadExtendedReg(EXT_NUM_TXBYTES);
+    WriteFIFO(c, 9);
+    if(ReadStatus() == 0x6F){
+        WriteStrobe(STROBE_SFTX);
+        WriteStrobe(STROBE_STX);
+    }
+    Delay_ms(800);
+    Toggle(WHITE_LED);
     }
 }
    

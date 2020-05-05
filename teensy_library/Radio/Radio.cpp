@@ -7,43 +7,43 @@
 #include "Arduino.h"
 #include "Radio.h"
 
-
-void printStatus(byte inByte) {
-  const char* s = 0;
+void printStatus(byte inByte)
+{
+  const char *s = 0;
   inByte &= (~0x80);
   inByte = inByte >> 4;
-  
-  switch (inByte) {
-      PROCESS_VAL(IDLER);
-      PROCESS_VAL(RX);
-      PROCESS_VAL(TX);
-      PROCESS_VAL(FSTXON);
-      PROCESS_VAL(CALIBRATE);
-      PROCESS_VAL(SETTLING);
-      PROCESS_VAL(RXFIFOERROR);
-      PROCESS_VAL(TXFIFOERROR);
+
+  switch (inByte)
+  {
+    PROCESS_VAL(IDLER);
+    PROCESS_VAL(RX);
+    PROCESS_VAL(TX);
+    PROCESS_VAL(FSTXON);
+    PROCESS_VAL(CALIBRATE);
+    PROCESS_VAL(SETTLING);
+    PROCESS_VAL(RXFIFOERROR);
+    PROCESS_VAL(TXFIFOERROR);
   }
   Serial.println(s);
 }
-   
-Radio::Radio(SPIClass &_spiObject, SPISettings &_spisettingsObject, const pins &pinsStruct, String _radioName, const rfend_cfg &RFEND_CFG) :
-  spiObject(_spiObject),
-  RFEND_CFG0_INIT(RFEND_CFG.RFEND_CFG0_INIT),
-  RFEND_CFG1_INIT(RFEND_CFG.RFEND_CFG1_INIT),
-  spiSS(pinsStruct.spiSS),
-  spiMOSI(pinsStruct.spiMOSI),
-  spiMISO(pinsStruct.spiMISO),
-  spiSCK(pinsStruct.spiSCK),
-  ccReset(pinsStruct.ccReset),
-  ccIO1(pinsStruct.ccIO1),
-  ccIO2(pinsStruct.ccIO2),
-  radioName(_radioName),
-  ccIO0(pinsStruct.ccIO0)
+
+Radio::Radio(SPIClass &_spiObject, SPISettings &_spisettingsObject, const pins &pinsStruct, String _radioName, const rfend_cfg &RFEND_CFG) : spiObject(_spiObject),
+                                                                                                                                             RFEND_CFG0_INIT(RFEND_CFG.RFEND_CFG0_INIT),
+                                                                                                                                             RFEND_CFG1_INIT(RFEND_CFG.RFEND_CFG1_INIT),
+                                                                                                                                             spiSS(pinsStruct.spiSS),
+                                                                                                                                             spiMOSI(pinsStruct.spiMOSI),
+                                                                                                                                             spiMISO(pinsStruct.spiMISO),
+                                                                                                                                             spiSCK(pinsStruct.spiSCK),
+                                                                                                                                             ccReset(pinsStruct.ccReset),
+                                                                                                                                             ccIO1(pinsStruct.ccIO1),
+                                                                                                                                             ccIO2(pinsStruct.ccIO2),
+                                                                                                                                             radioName(_radioName),
+                                                                                                                                             ccIO0(pinsStruct.ccIO0)
 {
-  pinMode (spiSS, OUTPUT);
-  pinMode (ccIO0, INPUT_PULLUP);
-  pinMode (ccIO2, INPUT_PULLUP);
-  pinMode (ccReset, OUTPUT);
+  pinMode(spiSS, OUTPUT);
+  pinMode(ccIO0, INPUT_PULLUP);
+  pinMode(ccIO2, INPUT_PULLUP);
+  pinMode(ccReset, OUTPUT);
   spiObject.setMOSI(spiMOSI);
   spiObject.setMISO(spiMISO);
   spiObject.setSCK(spiSCK);
@@ -58,7 +58,8 @@ void Radio::configurator(int channel)
   Status.txGo = 0;
   Status.active = 0;
 
-  while (ccIO1 == 1) {
+  while (ccIO1 == 1)
+  {
     i--;
     if (i <= 0)
       return;
@@ -99,7 +100,6 @@ void Radio::configurator(int channel)
   WriteReg(REG_PKT_CFG1, PKT_CFG1_INIT);
   WriteReg(REG_PKT_CFG2, PKT_CFG2_INIT);
   WriteReg(REG_PKT_LEN, CC_MAX_PACKET_DATA_SIZE);
-
 
   WriteReg(REG_RFEND_CFG1, RFEND_CFG1_INIT);
   WriteReg(REG_RFEND_CFG0, RFEND_CFG0_INIT);
@@ -144,7 +144,6 @@ void Radio::configurator(int channel)
   Status.active = 1;
 }
 
-
 inline byte Radio::SPIGetSet(byte x)
 {
   spiObject.beginTransaction(settingsA);
@@ -183,7 +182,8 @@ void Radio::WriteFIFO(byte *data, byte bytesToWrite)
   Clr(spiSS);
   SPIGetSet(FIFOS);
   Serial.println("Write FIFO " + radioName);
-  for (k = 0; k < bytesToWrite; k++) {
+  for (k = 0; k < bytesToWrite; k++)
+  {
     SPIGetSet(data[k]);
     Serial.print(data[k]);
     Serial.print("\t");
@@ -208,7 +208,7 @@ byte Radio::ReadExtendedReg(byte extReg)
 {
   byte x;
   Clr(spiSS);
-  Serial.print("Read Extended register: " + radioName + ": " );
+  Serial.print("Read Extended register: " + radioName + ": ");
   SPIGetSet(EXTENDED_ADDRESS | 0x80);
   SPIGetSet(extReg);
   x = SPIGetSet(0);
@@ -223,7 +223,8 @@ void Radio::ReadFIFO(byte *data, byte bytesToRead)
   Clr(spiSS);
   Serial.print("Read FIFO " + radioName + " ");
   SPIGetSet(FIFOS | 0x80);
-  for (k = 0; k < bytesToRead; k++) {
+  for (k = 0; k < bytesToRead; k++)
+  {
     data[k] = SPIGetSet(0);
     Serial.print(data[k]);
     Serial.print("\t");
@@ -236,18 +237,21 @@ byte Radio::ReadStatus()
   byte s;
 
   Clr(spiSS);
-  Serial.print("Read STATUS " + radioName + " ");
+  //Serial.print("Read STATUS " + radioName + " ");
   s = SPIGetSet(STROBE_SNOP);
   s = SPIGetSet(STROBE_SNOP);
   Set(spiSS);
+  //printStatus(s);
   return s;
 }
 
 void Radio::interruptHandler(void)
 {
+
   if (digitalRead(ccIO0) == 0)
   {
     int num_rx_bytes = ReadExtendedReg(EXT_NUM_RXBYTES);
+    Serial.println(num_rx_bytes);
     ReadFIFO(rx.raw, num_rx_bytes);
 #ifdef APPENDED
     if (num_rx_bytes >= CC_PACKET)
@@ -299,7 +303,8 @@ void Radio::cc1125Disable()
   Status.rssi = 0;
 }
 
-void Radio::printMemberName() {
+void Radio::printMemberName()
+{
   Serial.println((int)spiSS);
   Serial.println((int)spiMOSI);
   Serial.println((int)spiMISO);
@@ -309,5 +314,5 @@ void Radio::printMemberName() {
   Serial.println((int)ccIO1);
   Serial.println((int)ccIO2);
   Serial.println((int)RFEND_CFG0_INIT);
-  Serial.println((int)RFEND_CFG1_INIT); 
+  Serial.println((int)RFEND_CFG1_INIT);
 }

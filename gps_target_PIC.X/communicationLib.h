@@ -16,11 +16,15 @@ extern "C" {
 
 #define CPU_CT_HZ          (SYSCLK/2)
 #define US_TO_CT_TICKS  (CPU_CT_HZ/1000000UL)    // uS to CoreTimer Ticks
+#define CC_SCK      1000000
+#define CC_BRG      ((PBCLK / (2 * CC_SCK)) -1)
 
 
 void UART4_Initializer(unsigned long);
 void SPI_INT_SETUP();
 void GENERAL_INTERRUPT_SETUP();
+void IO_SETUP();
+void SPI1_Init();
 void TIMER1_SETUP();
 void U4INT_SETUP();
 void T1INT_SETUP();

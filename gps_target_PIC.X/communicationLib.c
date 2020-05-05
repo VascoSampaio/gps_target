@@ -25,11 +25,35 @@ void UART4_Initializer(unsigned long baudRate){
     U4MODEbits.ON                     = 1;  // UART4 module is Enabled
 }
 
+inline void SPI1_Init()
+{
+    int c;
+    Clr(SPI1CONbits.ENHBUF);
+    Clr(SPI1CONbits.SMP);
+    Set(SPI1CONbits.CKE);
+    Clr(SPI1CONbits.CKP);
+    Set(SPI1CONbits.MSTEN);
+    SPI1BRG = CC_BRG;
+    Set(SPI1CONbits.ON);
+    c = SPI1BUF;
+}
 
 void GENERAL_INTERRUPT_SETUP(){ //INTERRUPT CONTROL   
     INTDisableInterrupts();
     INTCONbits.MVEC   = 1;   //CPU interrupt enable to Multi vectored
-    INTCONbits.INT0EP = 1; //External interrupt Polarity
+    INTCONbits.INT0EP = 1;   //External interrupt Polarity   
+}
+
+
+void IO_SETUP(){
+    ANSELD= 0x00; //Set as digital port
+    ANSELB= 0x00; //Set as digital port
+    
+    // 0 - output; 1 - input
+    TRISE = 0x00; //Set as output
+    
+    //Write to port latch
+    LATE =  0x00; //Turn on LED's 
     
 }
 
@@ -64,9 +88,11 @@ void T1INT_SETUP(){
     IEC0bits.T1IE = 1; //Enable Timer1 Interrupt
 }
 
-void ShortDelay(uint32_t DelayCount){
+void Delay_ms(uint32_t DelayCount){
   uint32_t StartTime;                    // Start Time
-  uint32_t a;
-  StartTime = ReadCoreTimer();         // Get CoreTimer value for StartTime
-  while ( (uint32_t)(ReadCoreTimer() - StartTime) < DelayCount ) { a = ReadCoreTimer();};
+  volatile uint32_t a = GetPeripheralClock()/1000*DelayCount;
+  
+  StartTime = _CP0_GET_COUNT();         // Get CoreTimer value for StartTime
+  while ( (uint32_t)(_CP0_GET_COUNT() - StartTime) < a) { 
+  }
 }

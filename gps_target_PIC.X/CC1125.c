@@ -38,21 +38,18 @@ CC_Packet tx, rx;
 
 volatile CC1125_STATUS ccStatus;
 
-inline void SPI1_Init()
-{
-    int c;
-
-    Clr(SPI1CONbits.ENHBUF);
-    Clr(SPI1CONbits.SMP);
-    Set(SPI1CONbits.CKE);
-    Clr(SPI1CONbits.CKP);
-    Set(SPI1CONbits.MSTEN);
-    SPI1BRG = CC_BRG;
-    Set(SPI1CONbits.ON);
-    c = SPI1BUF;
-}
-
-
+//inline void SPI1_Init()
+//{
+//    int c;
+//    Clr(SPI1CONbits.ENHBUF);
+//    Clr(SPI1CONbits.SMP);
+//    Set(SPI1CONbits.CKE);
+//    Clr(SPI1CONbits.CKP);
+//    Set(SPI1CONbits.MSTEN);
+//    SPI1BRG = CC_BRG;
+//    Set(SPI1CONbits.ON);
+//    c = SPI1BUF;
+//}
 
 inline byte SPI1GetSet(byte x)
 {
@@ -166,19 +163,29 @@ byte ReadStatus()
 void CC1125_Init(byte channel)
 {
 	int i = 0xffff, timeout = 5;
-
+//    TRISB = 0x00;
+    
+    TRISD = 0xFF;
+    Clr(TRISDbits.TRISD1);
+    Clr(TRISDbits.TRISD2);
+    Set(TRISDbits.TRISD3);
+    Clr(TRISDbits.TRISD4);
+//    Set(TRISBbits.TRISB6);
+//    Clr(TRISBbits.TRISB7);	
+    CC_SPI_REMAP();
+            
 	Clr(IEC0bits.INT3IE);
-	Set(CC_RESET);
+    Set(CC_RESET);
 	Clr(CC_CS);
 	Clr(ccStatus.rxGo);
     Clr(ccStatus.txGo);
 	Clr(ccStatus.active);
-    while(CC_IO1 == 1){
+    while(PORTDbits.RD3 == 1){
 		i--;
 		if(i <= 0) return;
 	}
 	Set(CC_CS);
-	SPI1_Init();
+    SPI1_Init();
 	
 	if(channel < 1) channel = 1;
 	else if(channel > 40) channel = 40;
@@ -249,7 +256,7 @@ void CC1125_Init(byte channel)
     }
     while((i & 0xFF) != 0x0F);
 	
-	WriteStrobe(STROBE_SRX);	// start RX
+	//WriteStrobe(STROBE_SRX);	// start RX
 	Set(ccStatus.active);
 	Clr(INTCONbits.INT3EP);		//falling edge
     Clr(IFS0bits.INT3IF);
