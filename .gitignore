@@ -1,1 +1,4 @@
-
+./gps_target_PIC.X/build/
+./gps_target_PIC.X/debug/
+./gps_target_PIC.X/dist/
+./gps_target_PIC.X/nbproject/

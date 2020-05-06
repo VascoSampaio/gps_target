@@ -64,26 +64,23 @@ void main(){
     byte a = 0;
     IO_SETUP(); //INITIALIZE I/O
     
-   //INITIALIZE UART
-    //UART1_Initializer(115200); //baud rate =  115K    
-    UART4_Initializer(115200);   //baud rate =  115K    
     
     GENERAL_INTERRUPT_SETUP(); //SETUP INTERRUPT 
-    //SPI1_Init();
-
-    //TIMER1_SETUP(); //TIMER1
-//    U1INT_SETUP();  //INTERRUPT UART    
-    //U4INT_SETUP();
-//    T1INT_SETUP(); //INTERRUPT1
-    
+    UART4_Initializer(115200);   //baud rate =  115K    
     CC1125_Init(10);
+    
+    //U4INT_SETUP();
+    
+    
     Delay_ms(10);
     a = ReadStatus();
     a = ReadReg(REG_RFEND_CFG1);
     a = ReadReg(REG_RFEND_CFG0);
     WriteStrobe(STROBE_STX);
+    
     Delay_ms(10);
     //INTEnableInterrupts();   
+    
     while (1){
     byte c[CC_MAX_PACKET_DATA_SIZE] = {1,2,3,4,5,6,7,8,9};
     a = ReadExtendedReg(EXT_NUM_TXBYTES);

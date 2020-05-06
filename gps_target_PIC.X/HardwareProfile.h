@@ -38,6 +38,8 @@ extern "C" {
 #define CC_RESET    LATREG(B,7)
 #define CC_IO0		IN4
 #define CC_IO1		PORTREG(D,3)
+#define CC_SCK               1000000
+#define CC_BRG      ((PBCLK / (2 * CC_SCK)) -1)
 #define CC_SPI_REMAP()	{SDI1Rbits.SDI1R = 0x0; RPD1Rbits.RPD1R = 0x8; INT3Rbits.INT3R = 0x5;}	//RPD3 -> SI; RPD1 -> SDO3; CS -> RPD4; External Interrupt 3 on RPB9
     
 

@@ -38,18 +38,18 @@ CC_Packet tx, rx;
 
 volatile CC1125_STATUS ccStatus;
 
-//inline void SPI1_Init()
-//{
-//    int c;
-//    Clr(SPI1CONbits.ENHBUF);
-//    Clr(SPI1CONbits.SMP);
-//    Set(SPI1CONbits.CKE);
-//    Clr(SPI1CONbits.CKP);
-//    Set(SPI1CONbits.MSTEN);
-//    SPI1BRG = CC_BRG;
-//    Set(SPI1CONbits.ON);
-//    c = SPI1BUF;
-//}
+inline void SPI1_Init()
+{
+    int c;
+    Clr(SPI1CONbits.ENHBUF);
+    Clr(SPI1CONbits.SMP);
+    Set(SPI1CONbits.CKE);
+    Clr(SPI1CONbits.CKP);
+    Set(SPI1CONbits.MSTEN);
+    SPI1BRG = CC_BRG;
+    Set(SPI1CONbits.ON);
+    c = SPI1BUF;
+}
 
 inline byte SPI1GetSet(byte x)
 {

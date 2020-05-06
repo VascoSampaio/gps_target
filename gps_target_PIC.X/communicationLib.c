@@ -25,18 +25,18 @@ void UART4_Initializer(unsigned long baudRate){
     U4MODEbits.ON                     = 1;  // UART4 module is Enabled
 }
 
-inline void SPI1_Init()
-{
-    int c;
-    Clr(SPI1CONbits.ENHBUF);
-    Clr(SPI1CONbits.SMP);
-    Set(SPI1CONbits.CKE);
-    Clr(SPI1CONbits.CKP);
-    Set(SPI1CONbits.MSTEN);
-    SPI1BRG = CC_BRG;
-    Set(SPI1CONbits.ON);
-    c = SPI1BUF;
-}
+//inline void SPI1_Init()
+//{
+//    int c;
+//    Clr(SPI1CONbits.ENHBUF);
+//    Clr(SPI1CONbits.SMP);
+//    Set(SPI1CONbits.CKE);
+//    Clr(SPI1CONbits.CKP);
+//    Set(SPI1CONbits.MSTEN);
+//    SPI1BRG = CC_BRG;
+//    Set(SPI1CONbits.ON);
+//    c = SPI1BUF;
+//}
 
 void GENERAL_INTERRUPT_SETUP(){ //INTERRUPT CONTROL   
     INTDisableInterrupts();
