@@ -1,36 +1,24 @@
 /*
-   File:   radio.h
-   Author: Vasco Sampaio
-
-   Created on 1 of April, 2020
-
-   Useful links: https://community.platformio.org/t/compiling-isr-on-a-teensy/9018/2
+  Radio.h - Library for interacting with CC1125 transceiver.
+  Created by Vasco G. Sampaio, April 2, 2020.
+  Released into the public domain.
 */
 
-/*
-   File:   RF_SPI_master.c
-   Author: Vasco Sampaio
 
-   Created on 10 de Outubro de 2014, 17:56
-
-   Useful links: https://community.platformio.org/t/compiling-isr-on-a-teensy/9018/2
-*/
+#ifndef RADIO
+#define RADIO
 
 #include <SPI.h>
 #include "pins_arduino.h"
 #include <map>
-#include "binaryOperators.h"
 #include <string.h>
-
-#define SENDER
-#define RECEIVER
 
 #define EXTENDED_ADDRESS 0x2F
 #define DIRECT_MEMORY_ACCESS 0x3E
 #define FIFOS 0x7F
 
 //#define APPENDED
-#define CC_MAX_PACKET_DATA_SIZE 10
+#define CC_MAX_PACKET_DATA_SIZE 9
 #define CC_PACKET (CC_MAX_PACKET_DATA_SIZE + 2)
 
 #define REG_IOCFG3 0x00
@@ -300,23 +288,8 @@
     digitalWrite(x, LOW); \
   }
 
-//SPI 0
-#define CC_RESET_SENDER 3
-#define CC_IO0_SENDER 2
-#define CC_IO1_SENDER 12
-#define SS_SENDER 10
 
-//SPI 1
-#define CC_RESET_RECEIVER 7
-#define CC_IO0_RECEIVER 22
-#define CC_IO1_RECEIVER 5
-#define CC_IO2_RECEIVER 4
-#define SS_RECEIVER 6
-#define SCK_RECEIVER 20
-#define MOSI_RECEIVER 21
-#define MISO_RECEIVER 5
-
-SPISettings settingsA(1000000, MSBFIRST, SPI_MODE0);
+#define PROCESS_VAL(p) case (p):s = #p;break;
 
 //438.025 MHz - 439.975 MHz
 //const int channelListCC[40] = {
@@ -333,6 +306,18 @@ const long int channelListCC[69] = {
   0x56CB85, 0x56CCCC, 0x56CE14, 0x56CF5C, 0x56D0A3, 0x56D1EB, 0x56D333, 0x56D47A, 0x56D5C2, 0x56D70A, 0x56D851, 0x56D999,
   0x56DAE1, 0x56DC28, 0x56DD70, 0x56DEB8, 0x56E000, 0x56E147, 0x56E28F, 0x56E3D7, 0x56E51E, 0x56E666, 0x56E7AE, 0x56E8F5,
   0x56EA3D, 0x56EB85, 0x56ECCC, 0x56EE14, 0x56EF5C, 0x56F0A3, 0x56F1EB, 0x56F333, 0x56F47A
+};
+
+enum chip_status
+{
+  IDLER,
+  RX,
+  TX,
+  FSTXON,
+  CALIBRATE,
+  SETTLING,
+  RXFIFOERROR,
+  TXFIFOERROR
 };
 
 typedef struct pins {
@@ -352,6 +337,7 @@ typedef struct rfend_cfg {
 } rfend_cfg;
 
 void interruptHandlerWrapper();
+void printStatus(byte);
 
 class Radio
 {
@@ -382,6 +368,7 @@ class Radio
     static void interruptHandlerWrapper();
 
     SPIClass spiObject;
+    SPISettings settingsA;
 
     byte RFEND_CFG0_INIT;
     byte RFEND_CFG1_INIT;
@@ -396,7 +383,7 @@ class Radio
 
   public :
 
-    Radio(SPIClass &, const pins &pinsStruct, String _radioName, const rfend_cfg &RFEND_CFG); // : spiObject(_spiObject) {};
+    Radio(SPIClass &, SPISettings &, const pins &pinsStruct, String _radioName, const rfend_cfg &RFEND_CFG); // : spiObject(_spiObject) {};
     void configurator(int);
     void WriteReg(byte, byte);
     void WriteExtendedReg(byte, byte);
@@ -416,312 +403,5 @@ class Radio
     byte ccIO0;
 };
 
-Radio::Radio(SPIClass &_spiObject, const pins &pinsStruct, String _radioName, const rfend_cfg &RFEND_CFG) :
-  spiObject(_spiObject),
-  RFEND_CFG0_INIT(RFEND_CFG.RFEND_CFG0_INIT),
-  RFEND_CFG1_INIT(RFEND_CFG.RFEND_CFG1_INIT),
-  spiSS(pinsStruct.spiSS),
-  spiMOSI(pinsStruct.spiMOSI),
-  spiMISO(pinsStruct.spiMISO),
-  spiSCK(pinsStruct.spiSCK),
-  ccReset(pinsStruct.ccReset),
-  ccIO1(pinsStruct.ccIO1),
-  ccIO2(pinsStruct.ccIO2),
-  radioName(_radioName),
-  ccIO0(pinsStruct.ccIO0)
-{
-  pinMode (spiSS, OUTPUT);
-  pinMode (ccIO0, INPUT_PULLUP);
-  pinMode (ccIO2, INPUT_PULLUP);
-  pinMode (ccReset, OUTPUT);
-  spiObject.setMOSI(spiMOSI);
-  spiObject.setMISO(spiMISO);
-  spiObject.setSCK(spiSCK);
-}
 
-void Radio::configurator(int channel)
-{
-  int i = 0xffff, timeout = 5;
-  Set(ccReset);
-  Clr(spiSS);
-  Status.rxGo = 0;
-  Status.txGo = 0;
-  Status.active = 0;
-
-  while (ccIO1 == 1) {
-    i--;
-    if (i <= 0)
-      return;
-  }
-  Set(spiSS);
-
-  spiObject.begin();
-  if (channel < 1)
-    channel = 1;
-  else if (channel > 40)
-    channel = 40;
-  channel--;
-
-  WriteReg(REG_IOCFG3, IOCFG3_INIT);
-  WriteReg(REG_IOCFG2, IOCFG2_INIT);
-  WriteReg(REG_IOCFG1, IOCFG1_INIT);
-  WriteReg(REG_IOCFG0, IOCFG0_INIT);
-  WriteReg(REG_SYNC_CFG1, SYNC_CFG1_INIT);
-  WriteReg(REG_SYNC_CFG0, SYNC_CFG0_INIT);
-  //WriteReg(REG_PREAMBLE_CFG1, PREAMBLE_CFG1_INIT);
-  //WriteReg(REG_PREAMBLE_CFG0, PREAMBLE_CFG0_INIT);
-  WriteReg(REG_DEVIATION_M, DEVIATION_M_INIT);
-  WriteReg(REG_MODCFG_DEV_E, MODCFG_DEV_E_INIT);
-  WriteReg(REG_DCFILT_CFG, DCFILT_CFG_INIT);
-  WriteReg(REG_FREQ_IF_CFG, FREQ_IF_CFG_INIT);
-  WriteReg(REG_IQIC, IQIC_INIT);
-  WriteReg(REG_CHAN_BW, CHAN_BW_INIT);
-  WriteReg(REG_MDMCFG0, MDMCFG0_INIT);
-  WriteReg(REG_SYMBOL_RATE2, SYMBOL_RATE2_INIT);
-  WriteReg(REG_SYMBOL_RATE1, SYMBOL_RATE1_INIT);
-  WriteReg(REG_SYMBOL_RATE0, SYMBOL_RATE0_INIT);
-  WriteReg(REG_AGC_REF, AGC_REF_INIT);
-  WriteReg(REG_AGC_CS_THR, AGC_CS_THR_INIT);
-  WriteReg(REG_AGC_CFG1, AGC_CFG1_INIT);
-  WriteReg(REG_FIFO_CFG, FIFO_CFG_INIT);
-  WriteReg(REG_FS_CFG, FS_CFG_INIT);
-  WriteReg(REG_PKT_CFG0, PKT_CFG0_INIT);
-  WriteReg(REG_PKT_CFG1, PKT_CFG1_INIT);
-  WriteReg(REG_PKT_CFG2, PKT_CFG2_INIT);
-  WriteReg(REG_PKT_LEN, CC_MAX_PACKET_DATA_SIZE);
-
-
-  WriteReg(REG_RFEND_CFG1, RFEND_CFG1_INIT);
-  WriteReg(REG_RFEND_CFG0, RFEND_CFG0_INIT);
-
-  WriteReg(REG_AGC_GAIN_ADJUST, AGC_GAIN_ADJUST_INIT);
-  WriteReg(REG_PA_CFG0, PA_CFG0_INIT);
-
-  WriteExtendedReg(EXT_IF_MIX_CFG, IF_MIX_CFG_INIT);
-  WriteExtendedReg(EXT_FREQOFF_CFG, FREQOFF_CFG_INIT);
-  WriteExtendedReg(EXT_FREQ2, channelListCC[channel] >> 16);
-  WriteExtendedReg(EXT_FREQ1, channelListCC[channel] >> 8);
-  WriteExtendedReg(EXT_FREQ0, channelListCC[channel]);
-  WriteExtendedReg(EXT_FREQOFF0, FREQOFF0_INIT);
-  WriteExtendedReg(EXT_FREQOFF1, FREQOFF1_INIT);
-  WriteExtendedReg(EXT_IF_ADC0, IF_ADC0_INIT);
-  WriteExtendedReg(EXT_FS_DIG1, FS_DIG1_INIT);
-  WriteExtendedReg(EXT_FS_DIG0, FS_DIG0_INIT);
-  WriteExtendedReg(EXT_FS_CAL0, FS_CAL0_INIT);
-  WriteExtendedReg(EXT_FS_DIVTWO, FS_DIVTWO_INIT);
-  WriteExtendedReg(EXT_FS_DSM0, FS_DSM0_INIT);
-  WriteExtendedReg(EXT_FS_DVC0, FS_DVC0_INIT);
-  WriteExtendedReg(EXT_FS_PFD, FS_PFD_INIT);
-  WriteExtendedReg(EXT_FS_PRE, FS_PRE_INIT);
-  WriteExtendedReg(EXT_FS_REG_DIV_CML, FS_REG_DIV_CML_INIT);
-  WriteExtendedReg(EXT_FS_SPARE, FS_SPARE_INIT);
-  WriteExtendedReg(EXT_XOSC5, XOSC5_INIT);
-  WriteExtendedReg(EXT_XOSC3, XOSC3_INIT);
-  WriteExtendedReg(EXT_XOSC1, XOSC1_INIT);
-
-  do
-  {
-    i = 0xfff;
-    while (i > 0)
-      i--;
-    i = ReadStatus();
-    if (timeout <= 0)
-      return;
-    timeout--;
-  } while ((i & 0xFF) != 0x0F);
-
-  WriteStrobe(STROBE_STX); //Enable TX
-  Status.active = 1;
-}
-
-inline byte Radio::SPIGetSet(byte x)
-{
-  spiObject.beginTransaction(settingsA);
-  x = spiObject.transfer(x); // send test string
-  spiObject.endTransaction();
-  return x;
-}
-
-void Radio::WriteReg(byte reg, byte data)
-{
-  Clr(spiSS);
-  SPIGetSet(reg);
-  SPIGetSet(data);
-  Set(spiSS);
-}
-
-void Radio::WriteExtendedReg(byte extReg, byte data)
-{
-  Clr(spiSS);
-  SPIGetSet(EXTENDED_ADDRESS);
-  SPIGetSet(extReg);
-  SPIGetSet(data);
-  Set(spiSS);
-}
-
-void Radio::WriteStrobe(byte reg)
-{
-  Clr(spiSS);
-  SPIGetSet(reg);
-  Set(spiSS);
-}
-
-void Radio::WriteFIFO(byte *data, byte bytesToWrite)
-{
-  int k;
-  Clr(spiSS);
-  SPIGetSet(FIFOS);
-  Serial.println("Write FIFO " + radioName);
-  for (k = 0; k < bytesToWrite; k++) {
-    SPIGetSet(data[k]);
-    Serial.print(data[k]);
-    Serial.print("\t");
-  }
-  Serial.println();
-  Set(spiSS);
-}
-
-byte Radio::ReadReg(byte reg)
-{
-  Serial.print("Read register " + radioName);
-  byte x;
-  Clr(spiSS);
-  SPIGetSet(reg | 0x80);
-  x = SPIGetSet(0);
-  Serial.println(x);
-  Set(spiSS);
-  return x;
-}
-
-byte Radio::ReadExtendedReg(byte extReg)
-{
-  byte x;
-  Clr(spiSS);
-  Serial.print("Read Extended register: " + radioName + ": " );
-  SPIGetSet(EXTENDED_ADDRESS | 0x80);
-  SPIGetSet(extReg);
-  x = SPIGetSet(0);
-  Serial.println(x);
-  Set(spiSS);
-  return x;
-}
-
-void Radio::ReadFIFO(byte *data, byte bytesToRead)
-{
-  int k;
-  Clr(spiSS);
-  Serial.print("Read FIFO " + radioName + " ");
-  SPIGetSet(FIFOS | 0x80);
-  for (k = 0; k < bytesToRead; k++) {
-    data[k] = SPIGetSet(0);
-    Serial.print(data[k]);
-    Serial.print("\t");
-  }
-  bytearr2int(data, k, sizeof(data));
-  Serial.println(millis() - k);
-  Set(spiSS);
-}
-
-byte Radio::ReadStatus()
-{
-  byte s;
-
-  Clr(spiSS);
-  Serial.print("Read STATUS " + radioName + " ");
-  s = SPIGetSet(STROBE_SNOP);
-  s = SPIGetSet(STROBE_SNOP);
-  s &= (~0x80);
-  s = s >> 4;
-  printStatus(s);
-  Set(spiSS);
-  return s;
-}
-
-void Radio::interruptHandler(void)
-{
-  if (digitalRead(ccIO0) == 0)
-  {
-    int num_rx_bytes = ReadExtendedReg(EXT_NUM_RXBYTES);
-    ReadFIFO(rx.raw, num_rx_bytes);
-#ifdef APPENDED
-    if (num_rx_bytes >= CC_PACKET)
-      Status.rxGo = 1;
-#else
-    if (num_rx_bytes >= CC_MAX_PACKET_DATA_SIZE)
-      Status.rxGo = 1;
-#endif
-  }
-
-  if (Status.txGo)
-  {
-    WriteStrobe(STROBE_SIDLE);                  //Put in idle
-    WriteStrobe(STROBE_SFTX);                   //Flux TX
-    WriteStrobe(STROBE_STX);                    //Enable TX
-    WriteFIFO(tx.raw, CC_MAX_PACKET_DATA_SIZE); //Write to FIFO
-    Status.txGo = 0;
-  }
-  Serial.println("Asserted " + radioName);
-}
-
-void Radio::cc1125Process()
-{
-  if (Status.rxGo)
-  {
-    Status.rxGo = 0;
-    if (rx.RSSI > 120)
-      rx.RSSI = 0;
-    Status.rssi = rx.RSSI;
-  }
-}
-
-void Radio::cc1125Tx(byte *data, byte length)
-{
-  int s;
-  if (!Status.active)
-    return;
-  if (length > CC_MAX_PACKET_DATA_SIZE)
-    return;
-  for (s = 0; s < length; s++)
-    tx.data[s] = data[s];
-  Status.txGo = 1;
-}
-
-void Radio::cc1125Disable()
-{
-  Clr(ccReset);
-  Status.active = 0;
-  Status.rssi = 0;
-}
-
-void Radio::printMemberName() {
-  Serial.println((int)spiSS);
-  Serial.println((int)spiMOSI);
-  Serial.println((int)spiMISO);
-  Serial.println((int)spiSCK);
-  Serial.println((int)ccReset);
-  Serial.println((int)ccIO0);
-  Serial.println((int)ccIO1);
-  Serial.println((int)ccIO2);
-  Serial.println((int)RFEND_CFG0_INIT);
-  Serial.println((int)RFEND_CFG1_INIT);
-}
-
-#ifdef SENDER
-rfend_cfg sender_rfend_cfg  = {0x20, 0x2f};
-pins sender_pins =  {10, 11, 12, 13, 3, 2, 12, 14};
-Radio sender(SPI, sender_pins, "sender", sender_rfend_cfg);
-
-void senderWrapper() {
-  sender.interruptHandler();
-}
-#endif
-
-#ifdef RECEIVER
-rfend_cfg receiver_rfend_cfg  = {0x30, 0x3f};
-pins receiver_pins = {6, 21, 5, 20, 7, 22, 5, 4};
-Radio receiver(SPI1, receiver_pins, "receiver", receiver_rfend_cfg);
-
-void receiverWrapper() {
-  receiver.interruptHandler();
-}
 #endif

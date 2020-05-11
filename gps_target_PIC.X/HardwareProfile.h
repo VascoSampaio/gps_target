@@ -13,11 +13,11 @@ extern "C" {
 #endif
 
 #include "Typedefs.h"
-	
-	
-//LEDS
-#define LED1		LATREG(E,3)
-#define LED2		LATREG(E,4)
+    
+    //LEDS
+#define WHITE_LED		LATREG(E,3)
+#define ORANGE_LED	    LATREG(E,4)
+    
  
 //IO PINS
 #define IN1			PORTREG(B,9)
@@ -34,16 +34,18 @@ extern "C" {
 #define IO4_TRIS	TRISREG(B,6)
 
 //SPI
-#define CC_CS		LATREG(D,4)
-#define CC_RESET    OUT1
-#define CC_IO0		PORTREG(B,8)		// IO2
-#define CC_IO1		PORTREG(B,9)		// I01
-#define CC_SPI_REMAP()	{SDI1Rbits.SDI1R = 0x0; RPD1Rbits.RPD1R = 0x8; INT3Rbits.INT3R = 0x5;}	//RPD3 -> SI; RPD1 -> SDO3; CS -> RPB9
+#define CC_CS       LATREG(D,4)
+#define CC_RESET    LATREG(B,7)
+#define CC_IO0		IN4
+#define CC_IO1		PORTREG(D,3)
+#define CC_SCK               1000000
+#define CC_BRG      ((PBCLK / (2 * CC_SCK)) -1)
+#define CC_SPI_REMAP()	{SDI1Rbits.SDI1R = 0x0; RPD1Rbits.RPD1R = 0x8; INT3Rbits.INT3R = 0x5;}	//RPD3 -> SI; RPD1 -> SDO3; CS -> RPD4; External Interrupt 3 on RPB9
+    
 
-#define CONFIG_IOS()	{Clr(ANSELE); Clr(ANSELG); Output(TRISEbits.TRISE3); Output(TRISEbits.TRISE4); Set(LED1); Set(LED2); Output(TRISDbits.TRISD4); Set(SPI_CS); Output(CAN_DIS_TRIS); Set(CAN_DIS);}
+#define CONFIG_IOS()	{Clr(ANSELE); Clr(ANSELG); Output(TRISEbits.TRISE3); Output(TRISEbits.TRISE4); Set(LED1); Set(LED2); Output(TRISDbits.TRISD4); Set(CC_CS);}
 #define CONFIG_REMAP()	{SPI_REMAP(); CAN_REMAP();}
 
-	
 
 #ifdef	__cplusplus
 }

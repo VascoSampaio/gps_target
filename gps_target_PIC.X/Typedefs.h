@@ -12,7 +12,8 @@
 extern "C" {
 #endif
 
-
+#include "main.h"
+    
 typedef unsigned char byte;
 typedef unsigned short word;
 typedef unsigned int dword;
@@ -20,6 +21,7 @@ typedef unsigned int dword;
 
 
 #define LATREG(a,b)		LAT##a##bits.LAT##a##b
+#define TRISREG(a,b)    TRIS##a##bits.TRIS##a##b
 #define PORTREG(a,b)	PORT##a##bits.R##a##b
 #define CNSTATREG(a,b)	CNSTAT##a##bits.CNSTAT##a##b
 
