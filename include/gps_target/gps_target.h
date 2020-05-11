@@ -22,6 +22,8 @@
 
 #include <multidrone_kml_parser/geographic_to_cartesian.hpp>
 #include <geometry_msgs/Point32.h>
+#include <gps_target/SurveyGPS.h>
+
 
 
 
@@ -29,13 +31,12 @@
 // enum messages_configutation{GNS, GLL, GSA, GSV, RMC, VTG,  GGA};
 
 double          latitude, longitude, timenow;
-unsigned char   nmeaBuffer[80];
-unsigned char   ubxBuffer[60];
+unsigned char   nmeaBuffer[120];
+unsigned char   ubxBuffer[120];
 unsigned char*  nmeaPtr = nmeaBuffer;
 unsigned char*  ubxPtr = ubxBuffer;
-uint8_t         buf_size = 80;
-uint8_t         count_cfg = 0;
-bool            configured = false;
+uint8_t         buf_size = 120;
+bool            configured = false, survey = false, ack_received = false;
 
 
 
@@ -56,6 +57,28 @@ struct gps_gns_payload{
   unsigned char  checksum[2];
 } gps_gns;
 
+struct gps_pubx_payload{ 
+  unsigned char	 messageID[4];
+  int 	         UTC;
+  double	       latitude = 0;
+  unsigned char	 latDir;
+  double	       longitude = 0;
+  unsigned short longDir;
+  float          altref;      
+  unsigned char  navSat[2]; 
+  float          hAcc = 0;     
+  float          vAcc = 0;
+  double          SOG = 0;
+  double          COG = 0;
+  float          vVel = 0;
+  float          diffAge = 0;
+  float     	   HDOP = 0;
+  float          VDOP = 0;
+  float          TDOP = 0;
+  uint8_t     	 noSat = 0;
+  unsigned char  checksum[2];
+} gps_pubx;
+
 
 unsigned char   message_checksum[8]={5,1,2,0,0,0,0,0};
 struct pollfd   pfd[1];
@@ -63,6 +86,7 @@ struct pollfd   pfd[1];
 geographic_msgs::GeoPoint origin_geo_;
 geographic_msgs::GeoPoint actual_coordinate_geo;
 ros::Publisher            pub_gps;
+ros::Publisher            pub_surv;
 ros::Subscriber           sub_rtcm;
 
 
@@ -94,10 +118,11 @@ ubx_payload_valset rate;
   //FOR USB port
 
 ubx_payload_valset NMEA_OUT;
+ubx_payload_valset PUBX_OUT;
 ubx_payload_valset UBX_OUT{0x10780001, (unsigned char)1,"UBX_OUT"};
 ubx_payload_valset NMEA_IN{0x10770002,(unsigned char) 0,"NMEA_IN"}; 
 ubx_payload_valset COMM_OUT{0x20910352,(unsigned char)1, "COMM_OUT"};
-ubx_payload_valset GNS{0x209100b8,(unsigned char)1,"GNS"};
+
 ubx_payload_valset GLL{0x209100cc,(unsigned char)0,"GLL"}; 
 ubx_payload_valset GSA{0x209100c2,(unsigned char)0,"GSA"};
 ubx_payload_valset GSV{0x209100c7,(unsigned char)0,"GSV"};

@@ -11,14 +11,27 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   mavros_msgs
   multidrone_kml_parser
+  message_generation
 )
+
+
 
 ###########
 ## Build ##
 ###########
 
+add_message_files(
+  FILES
+  SurveyGPS.msg
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
+
 catkin_package(
-  CATKIN_DEPENDS roscpp mavros_msgs multidrone_kml_parser
+  CATKIN_DEPENDS roscpp mavros_msgs multidrone_kml_parser message_runtime
 )
 
 ## Specify additional locations of header files
@@ -36,6 +49,9 @@ add_compile_options(-DDEBUG)
 add_executable(${PROJECT_NAME}_node_debug src/gps_target_node.cpp)
 
 add_executable(read_write_node src/read_write.cpp)
+
+
+
 
 target_link_libraries(${PROJECT_NAME}_node
   ${catkin_LIBRARIES}

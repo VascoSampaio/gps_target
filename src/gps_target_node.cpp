@@ -194,8 +194,8 @@ static bool parseUBX(unsigned char buf[], int len){
 							return false;
 						}
 					}
-					count_cfg++;
-					std::cout << "             RECEIVED ACK\n"; 
+					ack_received = true;
+					ROS_WARN("             RECEIVED ACK"); 
 					#ifdef DEBUG 
 					for(ptr = buf;(ptr-buf) < len; ptr++)
 						std::cout <<std::hex<< " " << (int) *ptr;
@@ -206,7 +206,7 @@ static bool parseUBX(unsigned char buf[], int len){
 
 				case 0x00:
 								//NACK
-					std::cout << "             RECEIVED NACK\n"; 
+					ROS_WARN("             RECEIVED NACK"); 
 					
 					break;
 			}
@@ -278,10 +278,25 @@ void parseNMEA(){
 	
 }
 
+int getDivisor(unsigned char *rp){
+	unsigned char *aux = rp;
+	float divisor = 0.1;
+
+	while(*++aux != '.'){
+		if(*aux == ',')
+			break;
+		divisor*=10;
+	}
+
+	return divisor;
+}
+
 void parsePUBX(){
-	unsigned char *rp = &nmeaBuffer[5];
+	unsigned char *rp = &nmeaBuffer[8], *aux;
 	double divisor = 10;
-	gps_gns.latitude = gps_gns.longitude = 0; 
+	gps_pubx.latitude = gps_pubx.longitude = 0; 
+
+	
 
 	while(*++rp != ','){
 	// 	std::cout << *rp;
@@ -290,39 +305,141 @@ void parsePUBX(){
 	// std::cout << "\n";
 	for(;*++rp != ',';){
 		if(*rp != '.' ){
-			gps_gns.latitude += (*rp -'0') *divisor;
+			gps_pubx.latitude += (*rp -'0') *divisor;
 			// std::cout << *rp -'0';
 			divisor /= 10;
 		}
 	}
-	gps_gns.latitude = (int(gps_gns.latitude)+(gps_gns.latitude-int(gps_gns.latitude))*100/60); 
+	gps_pubx.latitude = (int(gps_pubx.latitude)+(gps_pubx.latitude-int(gps_pubx.latitude))*100/60); 
 	// std::cout << "\n";
 	rp +=2; divisor=100;
 	for(;*++rp != ',';){
 		if(*rp != '.' ){
-			gps_gns.longitude += (*rp -'0') *divisor;
+			gps_pubx.longitude += (*rp -'0') *divisor;
 			// std::cout << *rp -'0';
 			divisor /= 10;
 		}
 	}
 	// std::cout << "\n";
 	if (*++rp == 'W')
-		gps_gns.longitude = -(int(gps_gns.longitude)+(gps_gns.longitude-int(gps_gns.longitude))*100/60);
+		gps_pubx.longitude = -(int(gps_pubx.longitude)+(gps_pubx.longitude-int(gps_pubx.longitude))*100/60);
 	else 
-		gps_gns.longitude = (int(gps_gns.longitude)+(gps_gns.longitude-int(gps_gns.longitude))*100/60);
+		gps_pubx.longitude = (int(gps_pubx.longitude)+(gps_pubx.longitude-int(gps_pubx.longitude))*100/60);
 // 
 	rp++;
-	for(;*++rp != ',';){
-			//std::cout << *rp;
+	while(*++rp != ','){
+	//std::cout << *rp;
 	}
-	//std::cout << "\n";
-// 
 
-	actual_coordinate_geo.latitude  = gps_gns.latitude;
-	actual_coordinate_geo.longitude = gps_gns.longitude;
-	actual_coordinate_geo.altitude  = 0;
+	aux = rp + 1;
+	while(*++rp != ','){ // Navigation Status
+		gps_pubx.navSat[rp-aux] = *rp;
+	}
+
+	divisor = getDivisor(rp);
+	gps_pubx.hAcc = 0;
+	for(;*++rp != ',';){
+		if(*rp != '.' ){
+			gps_pubx.hAcc += (*rp -'0') *divisor;
+			// std::cout << *rp -'0';
+			divisor /= 10;
+		}
+	}
+
+	divisor = getDivisor(rp);
+	gps_pubx.vAcc = 0;
+	for(;*++rp != ',';){
+		if(*rp != '.' ){
+			gps_pubx.vAcc += (*rp -'0') *divisor;
+			//std::cout << *rp -'0';
+			divisor /= 10;
+		}
+	}
+
+	divisor = getDivisor(rp);
+	gps_pubx.SOG = 0;
+	for(;*++rp != ',';){
+		if(*rp != '.' ){
+			gps_pubx.SOG += (*rp -'0') *divisor;
+			//std::cout << *rp -'0' ;
+			divisor /= 10;
+		}
+	}
+
+	divisor = getDivisor(rp);
+	gps_pubx.COG = 0;
+	for(;*++rp != ',';){
+		if(*rp != '.' ){
+			gps_pubx.COG += (*rp -'0') *divisor;
+			// std::cout << *rp -'0';
+			divisor /= 10;
+		}
+	}
+
+	while(*++rp != ','){
+	// 	std::cout << *rp;
+	}
+	while(*++rp != ','){
+	// 	std::cout << *rp;
+	}
+
+	divisor = getDivisor(rp);
+	gps_pubx.HDOP = 0;
+	for(;*++rp != ',';){
+		if(*rp != '.' ){
+			gps_pubx.HDOP += (*rp -'0') *divisor;
+			// std::cout << *rp -'0';
+			divisor /= 10;
+		}
+	}
+
+	divisor = getDivisor(rp);
+	gps_pubx.VDOP = 0;
+	for(;*++rp != ',';){
+		if(*rp != '.' ){
+			gps_pubx.VDOP += (*rp -'0') *divisor;
+			// std::cout << *rp -'0';
+			divisor /= 10;
+		}
+	}
+
+	divisor = getDivisor(rp);
+	gps_pubx.TDOP = 0;
+	for(;*++rp != ',';){
+		if(*rp != '.' ){
+			gps_pubx.TDOP += (*rp -'0') *divisor;
+			// std::cout << *rp -'0';
+			divisor /= 10;
+		}
+	}
+	
+	gps_pubx.noSat = *++rp -'0';
+
+	
+	actual_coordinate_geo.latitude  = gps_pubx.latitude;
+	actual_coordinate_geo.longitude = gps_pubx.longitude;
+	actual_coordinate_geo.altitude  = gps_pubx.vAcc;
 	geometry_msgs::Point32 target_pose = multidrone::geographic_to_cartesian(actual_coordinate_geo, origin_geo_);
+	gps_target::SurveyGPS survey_info;
+
+	survey_info.x = target_pose.x;
+	survey_info.y = target_pose.y;
+	survey_info.z = 0;
+	survey_info.navStat[0] = gps_pubx.navSat[0];
+	survey_info.navStat[1] = gps_pubx.navSat[1];
+	survey_info.numSat = gps_pubx.noSat;
+	survey_info.hAcc = gps_pubx.hAcc;
+	survey_info.vAcc = gps_pubx.vAcc;
+	survey_info.SOG = gps_pubx.SOG;
+	survey_info.COG = gps_pubx.COG;
+	survey_info.vel = gps_pubx.vVel;
+	survey_info.HDOP = gps_pubx.HDOP;
+	survey_info.VDOP = gps_pubx.VDOP;
+	survey_info.TDOP = gps_pubx.TDOP;
+	
+
 	pub_gps.publish(target_pose);
+	pub_surv.publish(survey_info);
 	// ros::spinOnce();
 	
 }
@@ -331,7 +448,7 @@ void parsePUBX(){
 
 static bool getMessage(struct pollfd* pf){
 
-		uint8_t n = 0, BLEN = 80, MLEN = 10;
+		uint8_t n = 0, BLEN = 120, MLEN = 10;
 		unsigned char buf[BLEN];
 		unsigned char *rp = &buf[BLEN];
 		unsigned char crc  = 0;
@@ -340,7 +457,7 @@ static bool getMessage(struct pollfd* pf){
 		uint16_t msg_lgt;
 
 		while(getbyte(pf, buf,rp, &n, BLEN) !=n){
-			//std::cout << "feifeijfeifj" << *(rp-1);
+			// std::cout << *(rp-1);
 			switch(state){
        		   	case START_WAIT:               		 // Waiting for start of message
 					if(*(rp-1) == '$'){
@@ -357,17 +474,24 @@ static bool getMessage(struct pollfd* pf){
 					}                        	 //                        	 // and start receiving data
        		      	break;
        		   	case RECEIVING_NMEA:                       // Message Start received
-       		      	if(*(rp-1) == '*'){              // If end of message...
+					if(*(rp-1) == '*'){              // If end of message...
 						if (hex_decode(rp,2, &crc)){
 							#ifdef DEBUG
 							if(configured){
-								ROS_WARN("RECEIVED NMEA: ");
+								if(!survey )ROS_WARN("RECEIVED NMEA: ");
+								else ROS_WARN("RECEIVED PUBX: ");
 								for(unsigned char* last = nmeaPtr;((nmeaPtr)-nmeaBuffer) > 0 ;)
 					 	 			std::cout << nmeaBuffer[last-nmeaPtr--];
 					 			std::cout << "\n\n";
 				 			}
 				 			#endif
-				  			parseNMEA();
+							if(configured){
+								if(!survey){
+									parseNMEA();
+								}
+								else
+									parsePUBX();
+							}
 							state  = START_WAIT;														  
 							break;
 						}
@@ -459,15 +583,19 @@ int main(int argc, char **argv)
 	static std::string portName_;
 	int product_id, vendor_id, sizer = 0;
 	bool port_opened = false;
+	int count_cfg;
 
 
 	std::signal(SIGINT, signalHandler);
 
 	pub_gps  = n.advertise<geometry_msgs::Point32>("/gps_message",1);
+	pub_surv  = n.advertise<gps_target::SurveyGPS>("/survey_message",1);
 
 	pnh.param<int>("vend", vendor_id,  0x1546); //0x0403
     pnh.param<int>("prod", product_id, 0x01a8); //0x6001
 	pnh.param<bool>("config", configured, false);
+	pnh.param<bool>("survey", survey, false);
+	
 
 	std::vector<double> origin_geo_vector;
 	pnh.getParam("origin_geo",origin_geo_vector);
@@ -477,16 +605,19 @@ int main(int argc, char **argv)
 
 	pfd[0].events = POLLIN;
 	
+	PUBX_OUT = {0x209100ef, (unsigned char) (survey ? 1 : 0), "PUBX_OUT" };
 	NMEA_OUT = {0x10780002, (uint16_t)pnh.param("NMEA",1),"NMEA_OUT"};
 	rate = {0x30210001, (uint16_t)pnh.param("rate",100), "rate"};
+	ubx_payload_valset GNS{0x209100b8,(unsigned char)(survey ? 0 : 1),"GNS"};
 
 	//FOR UART port
 	if (!pnh.param<bool>("USB", false)){ //UART
 		ROS_WARN("UART");
+		PUBX_OUT = {0x209100ed, (unsigned char) (survey ? 1 : 0), "PUBX_OUT" };
 		NMEA_OUT= {0x10740002, (unsigned char)pnh.param("NMEA",1),"NMEA_OUT"};
 		UBX_OUT = {0x10740001, (unsigned char)1,"UBX_OUT"};
 		NMEA_IN = {0x10730002, (unsigned char)0,"NMEA_IN"};
-		GNS     = {0x209100b6, (unsigned char)1,"GNS"};
+		GNS     = {0x209100b6, (unsigned char)(survey ? 0 : 1),"GNS"};
 		GLL     = {0x209100ca, (unsigned char)0,"GLL"};
 		GSA     = {0x209100c0, (unsigned char)0,"GSA"};
 		GSV     = {0x209100c5, (unsigned char)0,"GSV"};
@@ -497,20 +628,22 @@ int main(int argc, char **argv)
  		baudrate= {0x40520001, (int) 115200, "baudrate"};
 	}
 	
-	valset_map.insert(std::make_pair(0, &GGA));
-	valset_map.insert(std::make_pair(1, &GNS));
-	valset_map.insert(std::make_pair(2, &VTG));
-	valset_map.insert(std::make_pair(3, &RMC));
-	valset_map.insert(std::make_pair(4, &GSV));
-	valset_map.insert(std::make_pair(5, &GLL));
-	valset_map.insert(std::make_pair(6, &GSA));
-	valset_map.insert(std::make_pair(7, &S_BAS));
-	valset_map.insert(std::make_pair(8, &DGNSSTO)); 
-	valset_map.insert(std::make_pair(9, &COMM_OUT));
-	valset_map.insert(std::make_pair(10,&GPS_ONLY));
-	valset_map.insert(std::make_pair(11,&rate));  
-	valset_map.insert(std::make_pair(12,&NMEA_OUT));	
-	//valset_map.insert(std::make_pair(13,&baudrate));  
+	valset_map.insert(std::make_pair(0,&NMEA_OUT));
+	valset_map.insert(std::make_pair(1, &GGA));
+	valset_map.insert(std::make_pair(2, &GNS));
+	valset_map.insert(std::make_pair(3, &VTG));
+	valset_map.insert(std::make_pair(4, &RMC));
+	valset_map.insert(std::make_pair(5, &GSV));
+	valset_map.insert(std::make_pair(6, &GLL));
+	valset_map.insert(std::make_pair(7, &GSA));
+	valset_map.insert(std::make_pair(8, &S_BAS));
+	valset_map.insert(std::make_pair(9, &DGNSSTO)); 
+	valset_map.insert(std::make_pair(10, &COMM_OUT));
+	valset_map.insert(std::make_pair(11,&GPS_ONLY));
+	valset_map.insert(std::make_pair(12,&rate));  
+		
+	valset_map.insert(std::make_pair(13, &PUBX_OUT));
+	//valset_map.insert(std::make_pair(14,&baudrate));  
 	
 	// valset_map.insert(std::make_pair(0, &UBX_OUT));
 	// valset_map.insert(std::make_pair(1, &NMEA_IN));
@@ -525,11 +658,11 @@ int main(int argc, char **argv)
 	  
 		while(!port_opened){
 			main_with_exceptions(portName_, vendor_id, product_id);
-			portName_= "/dev/pts/18";
+			portName_= "/dev/ttyACM0";
 			
 			if(boost::get<unsigned char>(NMEA_IN.idValue) != 0){
 				ROS_INFO("Changing VMIN");
-				buf_size = 80;
+				buf_size = 120;
 			}
 
 			pfd[0].fd = rtcm_open(portName_.c_str(),buf_size);
@@ -549,11 +682,14 @@ int main(int argc, char **argv)
 		std::thread th1(loop_get, pfd);
 
 		if (!configured){
-			for(count_cfg=0; count_cfg < valset_map.size();){
+			for(count_cfg=0; count_cfg < valset_map.size(); ){
 				ubx_cfg(pfd[0].fd,valset_map[count_cfg]);
 				std::cout << valset_map[count_cfg]->Print();
-				usleep(250000);
-				
+				usleep(1000000);
+				if(ack_received) {
+					count_cfg++;
+					ack_received = false;
+				}
 			}
 			ROS_INFO("CONFIGURED");
 			configured = true;
