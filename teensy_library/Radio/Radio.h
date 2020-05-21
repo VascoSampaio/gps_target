@@ -18,7 +18,7 @@
 #define FIFOS 0x7F
 
 //#define APPENDED
-#define CC_MAX_PACKET_DATA_SIZE 9
+#define CC_MAX_PACKET_DATA_SIZE 36
 #define CC_PACKET (CC_MAX_PACKET_DATA_SIZE + 2)
 
 #define REG_IOCFG3 0x00
@@ -83,7 +83,7 @@
 #define STROBE_SFTX 0x3B
 #define STROBE_SWORRST 0x3C
 #define STROBE_SNOP 0x3D
-
+ 
 #define EXT_IF_MIX_CFG 0x00
 #define EXT_FREQOFF_CFG 0x01
 #define EXT_TOC_CFG 0x02

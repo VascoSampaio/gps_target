@@ -109,13 +109,14 @@ delay(10);
     sender.WriteStrobe(STROBE_STX);
   }
 #endif
-  receiver.ReadExtendedReg(EXT_NUM_RXBYTES);
+  //receiver.ReadExtendedReg(EXT_NUM_RXBYTES);
+  //Serial.println(receiver.ReadExtendedReg(EXT_NUM_RXBYTES));
 
   if (receiver.ReadStatus() == RXFIFOERROR) {
     receiver.WriteStrobe(STROBE_SFRX);
     receiver.WriteStrobe(STROBE_SRX);
   }
 
-  Serial.println("\n");
+  //Serial.println("\n");
   delay(300);
 }

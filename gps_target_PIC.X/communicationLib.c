@@ -51,6 +51,9 @@ void IO_SETUP(){
     
     // 0 - output; 1 - input
     TRISE = 0x00; //Set as output
+    TRISB = 0x00;
+    TRISBbits.TRISB7 = 0;
+    TRISBbits.TRISB6 = 1;
     
     //Write to port latch
     LATE =  0x00; //Turn on LED's 
@@ -73,7 +76,7 @@ void SPI_INT_SETUP(){ //UART1 INTERRUPT SETUP
     IEC1bits.U1RXIE = 1;  // Rx interrupt enable
 }
 
-void U4INT_SETUP(){ //UART4 INTERRUPT SETUP
+void U4INT_SETUP(){ // UART4 INTERRUPT SETUP
     IEC2bits.U4EIE  = 1;
     IPC9bits.U4IP   = 6;  // Rx Interrurpt priority level
     IPC9bits.U4IS   = 3;  // Rx Interrurpt sub priority level

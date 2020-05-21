@@ -34,5 +34,8 @@ extern "C" {
 }
 #endif
 
+bool getMessage(unsigned char currChar);
+unsigned char* chooseNMEA(int opt);
+
 #endif	/* MAIN_H */
 

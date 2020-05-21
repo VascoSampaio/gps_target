@@ -140,7 +140,7 @@ void Radio::configurator(int channel)
     timeout--;
   } while ((i & 0xFF) != 0x0F);
 
-  WriteStrobe(STROBE_STX); //Enable TX
+ WriteStrobe(STROBE_STX); //Enable TX
   Status.active = 1;
 }
 
@@ -194,12 +194,12 @@ void Radio::WriteFIFO(byte *data, byte bytesToWrite)
 
 byte Radio::ReadReg(byte reg)
 {
-  Serial.print("Read register " + radioName);
+  //Serial.print("Read register " + radioName);
   byte x;
   Clr(spiSS);
   SPIGetSet(reg | 0x80);
   x = SPIGetSet(0);
-  Serial.println(x);
+  //Serial.println(x);
   Set(spiSS);
   return x;
 }
@@ -208,11 +208,11 @@ byte Radio::ReadExtendedReg(byte extReg)
 {
   byte x;
   Clr(spiSS);
-  Serial.print("Read Extended register: " + radioName + ": ");
+  //Serial.print("Read Extended register: " + radioName + ": ");
   SPIGetSet(EXTENDED_ADDRESS | 0x80);
   SPIGetSet(extReg);
   x = SPIGetSet(0);
-  Serial.println(x);
+  //Serial.println(x);
   Set(spiSS);
   return x;
 }
@@ -220,15 +220,21 @@ byte Radio::ReadExtendedReg(byte extReg)
 void Radio::ReadFIFO(byte *data, byte bytesToRead)
 {
   int k;
+  double a = 80;
   Clr(spiSS);
-  Serial.print("Read FIFO " + radioName + " ");
+  //Serial.print("Read FIFO " + radioName + " ");
   SPIGetSet(FIFOS | 0x80);
+  //a = millis();
   for (k = 0; k < bytesToRead; k++)
   {
     data[k] = SPIGetSet(0);
-    Serial.print(data[k]);
-    Serial.print("\t");
+    //a = (int) data[k];
+    Serial.write(data[k]);
+    //Serial.print(",");
   }
+  //a = millis()-a;
+  //Serial.println();
+  //Serial.println(a);
   Set(spiSS);
 }
 
@@ -251,7 +257,7 @@ void Radio::interruptHandler(void)
   if (digitalRead(ccIO0) == 0)
   {
     int num_rx_bytes = ReadExtendedReg(EXT_NUM_RXBYTES);
-    Serial.println(num_rx_bytes);
+    //Serial.println(num_rx_bytes);
     ReadFIFO(rx.raw, num_rx_bytes);
 #ifdef APPENDED
     if (num_rx_bytes >= CC_PACKET)
@@ -270,7 +276,8 @@ void Radio::interruptHandler(void)
     WriteFIFO(tx.raw, CC_MAX_PACKET_DATA_SIZE); //Write to FIFO
     Status.txGo = 0;
   }
-  Serial.println("Asserted " + radioName);
+  Serial.println();
+  //Serial.println("Asserted " + radioName);
 }
 
 void Radio::cc1125Process()

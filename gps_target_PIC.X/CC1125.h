@@ -17,7 +17,7 @@ extern "C" {
 #define INT_PRIORITY_CC			5
 //#define CC_BROADCAST_ADDR		0xFFFF		// FFFF broadcast
 //#define CC_MY_ADDR				0x3958		//"9X"
-#define CC_MAX_PACKET_DATA_SIZE			9
+#define CC_MAX_PACKET_DATA_SIZE			36
 	
 #define CC1125_CHANNEL_MIN		1
 #define CC1125_CHANNEL_MAX		69
