@@ -36,6 +36,9 @@ extern "C" {
 
 bool getMessage(unsigned char currChar);
 unsigned char* chooseNMEA(int opt);
-
+static bool ubx_checksum(const unsigned char *data,  unsigned len, unsigned char ck[2], unsigned char comparator_a, unsigned char comparator_b);
+bool cfg_gps(uint16_t rate);
+void send_cfg(int keyValue, int write_size, char enable, uint16_t rate);
+void chooseUBX();
 #endif	/* MAIN_H */
 

@@ -31,12 +31,20 @@
 // enum messages_configutation{GNS, GLL, GSA, GSV, RMC, VTG,  GGA};
 
 double          latitude, longitude, timenow;
+std::mutex pfd_lock;
 unsigned char   nmeaBuffer[120];
 unsigned char   ubxBuffer[120];
+unsigned char   radioposBuffer[40];
+unsigned char   radiosurvBuffer[120];
 unsigned char*  nmeaPtr = nmeaBuffer;
 unsigned char*  ubxPtr = ubxBuffer;
-uint8_t         buf_size = 120;
+unsigned char*  survPtr = radiosurvBuffer;
+unsigned char*  posPtr = radioposBuffer;
+uint8_t         buf_size = 40;
 bool            configured = false, survey = false, ack_received = false;
+enum {POS = 0, SURV};
+enum {START_WAIT, RECEIVING_NMEA, RECEIVING_UBX, RECEIVING_UBX_PAYLOAD, MSG_RECEIVED_NMEA,MSG_RECEIVED_UBX, RECEIVING_RADIO_POS, RECEIVING_RADIO_SURV}
+		state = START_WAIT; 
 
 
 
@@ -137,3 +145,4 @@ ubx_payload_valset baudrate;
 // ubx_payload_valset NAV{0x20910348,0,"NAV"};
 
 #endif
+

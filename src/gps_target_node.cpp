@@ -444,20 +444,246 @@ void parsePUBX(){
 	
 }
 
+void parseRADIO(unsigned char opt){
+	unsigned char *rp, *aux;
+	double divisor = 10;
+	gps_pubx.latitude = gps_pubx.longitude = 0; 
+
+	if(opt == POS){
+		rp = radioposBuffer-1;
+			// std::cout << "\n";
+		for(;*++rp != ',';){
+			// std::cout << *rp;
+			if(*rp != '.' ){
+				gps_pubx.latitude += (*rp -'0') *divisor;
+				// std::cout << *rp -'0';
+				divisor /= 10;
+			}
+		}
+		
+		gps_pubx.latitude = (int(gps_pubx.latitude)+(gps_pubx.latitude-int(gps_pubx.latitude))*100/60); 
+		// std::cout << "\n";
+		rp +=2; divisor=100;
+		for(;*++rp != ',';){
+			// std::cout << *rp;
+			if(*rp != '.' ){
+				gps_pubx.longitude += (*rp -'0') *divisor;
+				// std::cout << *rp -'0';
+				divisor /= 10;
+			}
+		}
+		// std::cout << "\n";
+		if (*++rp == 'W')
+			gps_pubx.longitude = -(int(gps_pubx.longitude)+(gps_pubx.longitude-int(gps_pubx.longitude))*100/60);
+		else 
+			gps_pubx.longitude = (int(gps_pubx.longitude)+(gps_pubx.longitude-int(gps_pubx.longitude))*100/60);
+	// 
+		rp++;
+		divisor = getDivisor(rp);
+		gps_pubx.altref = 0;
+		for(;*++rp != ',';){
+			// std::cout << *rp;
+			if(*rp == '\0') break;
+			if(*rp != '.' ){
+				gps_pubx.altref += (*rp -'0') *divisor;
+				// std::cout << *rp -'0';
+				divisor /= 10;
+			}
+		}
+
+		// aux = rp + 1;
+		// while(*++rp != '\n'){ // Navigation Status
+		// 	gps_pubx.navSat[rp-aux] = *rp;
+		// }
+	} else {
+		rp = &radiosurvBuffer[7];
+		// std::cout << *rp;
+		while(*++rp != ','){
+			// std::cout << *rp;
+		}
+
+		// std::cout << "\n";
+		for(;*++rp != ',';){
+			// std::cout << *rp;
+			if(*rp != '.' ){
+				gps_pubx.latitude += (*rp -'0') *divisor;
+				// std::cout << *rp -'0';
+				divisor /= 10;
+			}
+		}
+		gps_pubx.latitude = (int(gps_pubx.latitude)+(gps_pubx.latitude-int(gps_pubx.latitude))*100/60);
+		// std::cout << "\n";
+		rp +=2; divisor=100;
+		for(;*++rp != ',';){
+			//std::cout << *rp;
+			if(*rp != '.' ){
+				gps_pubx.longitude += (*rp -'0') *divisor;
+				// std::cout << *rp -'0';
+				divisor /= 10;
+			}
+		}
+		// std::cout << "\n";
+		if (*++rp == 'W')
+			gps_pubx.longitude = -(int(gps_pubx.longitude)+(gps_pubx.longitude-int(gps_pubx.longitude))*100/60);
+		else 
+			gps_pubx.longitude = (int(gps_pubx.longitude)+(gps_pubx.longitude-int(gps_pubx.longitude))*100/60);
+	// 
+		rp++;
+		divisor = getDivisor(rp);
+		gps_pubx.altref = 0;
+		for(;*++rp != ',';){
+			// std::cout << *rp;
+			if(*rp == '\0') break;
+			if(*rp != '.' ){
+				gps_pubx.altref += (*rp -'0') *divisor;
+				// std::cout << *rp -'0';
+				divisor /= 10;
+			}
+		}
+
+		aux = rp + 1;
+		// std::cout << *rp;
+		while(*++rp != ','){ // Navigation Status
+		// std::cout << *rp;
+			gps_pubx.navSat[rp-aux] = *rp;
+		}
+
+		divisor = getDivisor(rp);
+		gps_pubx.hAcc = 0;
+		for(;*++rp != ',';){
+			// std::cout << *rp;
+			if(*rp != '.' ){
+				gps_pubx.hAcc += (*rp -'0') *divisor;
+				// std::cout << *rp -'0';
+				divisor /= 10;
+			}
+		}
+
+		divisor = getDivisor(rp);
+		gps_pubx.vAcc = 0;
+		for(;*++rp != ',';){
+			// std::cout << *rp;
+			if(*rp != '.' ){
+				gps_pubx.vAcc += (*rp -'0') *divisor;
+				//std::cout << *rp -'0';
+				divisor /= 10;
+			}
+		}
+
+		divisor = getDivisor(rp);
+		gps_pubx.SOG = 0;
+		for(;*++rp != ',';){
+			// std::cout << *rp;
+			if(*rp != '.' ){
+				gps_pubx.SOG += (*rp -'0') *divisor;
+				//std::cout << *rp -'0' ;
+				divisor /= 10;
+			}
+		}
+
+		divisor = getDivisor(rp);
+		gps_pubx.COG = 0;
+		for(;*++rp != ',';){
+			// std::cout << *rp;
+			if(*rp != '.' ){
+				gps_pubx.COG += (*rp -'0') *divisor;
+				// std::cout << *rp -'0';
+				divisor /= 10;
+			}
+		}
+
+		while(*++rp != ','){
+			// std::cout << *rp;
+		}
+		while(*++rp != ','){
+			// std::cout << *rp;
+		}
+
+		divisor = getDivisor(rp);
+		gps_pubx.HDOP = 0;
+		for(;*++rp != ',';){
+			// std::cout << *rp;
+			if(*rp != '.' ){
+				gps_pubx.HDOP += (*rp -'0') *divisor;
+				// std::cout << *rp -'0';
+				divisor /= 10;
+			}
+		}
+
+		divisor = getDivisor(rp);
+		gps_pubx.VDOP = 0;
+		for(;*++rp != ',';){
+			// std::cout << *rp;
+			if(*rp != '.' ){
+				gps_pubx.VDOP += (*rp -'0') *divisor;
+				// std::cout << *rp -'0';
+				divisor /= 10;
+			}
+		}
+
+		divisor = getDivisor(rp);
+		gps_pubx.TDOP = 0;
+		for(;*++rp != ',';){
+			// std::cout << *rp;
+			if(*rp != '.' ){
+				gps_pubx.TDOP += (*rp -'0') *divisor;
+				// std::cout << *rp -'0';
+				divisor /= 10;
+			}
+		}
+		
+		gps_pubx.noSat = 0;
+		divisor = getDivisor(rp);
+		for(;*++rp != ',';){
+			gps_pubx.noSat += (*rp -'0') * divisor;
+			divisor /= 10 ;	
+		}
+		
+		// std::cout << *rp;
+
+	}
+	
+	actual_coordinate_geo.latitude  = gps_pubx.latitude;
+	actual_coordinate_geo.longitude = gps_pubx.longitude;
+	actual_coordinate_geo.altitude  = 0;
+	//std::cout<< gps_pubx.latitude << "    " << gps_pubx.longitude << "\n"; 
+	geometry_msgs::Point32 target_pose = multidrone::geographic_to_cartesian(actual_coordinate_geo, origin_geo_);
+	gps_target::SurveyGPS survey_info;
+
+	survey_info.x = target_pose.x;
+	survey_info.y = target_pose.y;
+	survey_info.z = gps_pubx.altref;
+	survey_info.navStat[0] = gps_pubx.navSat[0];
+	survey_info.navStat[1] = gps_pubx.navSat[1];
+	survey_info.numSat = gps_pubx.noSat;
+	survey_info.hAcc = gps_pubx.hAcc;
+	survey_info.vAcc = gps_pubx.vAcc;
+	survey_info.SOG = gps_pubx.SOG;
+	survey_info.COG = gps_pubx.COG;
+	survey_info.vel = gps_pubx.vVel;
+	survey_info.HDOP = gps_pubx.HDOP;
+	survey_info.VDOP = gps_pubx.VDOP;
+	survey_info.TDOP = gps_pubx.TDOP;
+	
+
+	pub_gps.publish(target_pose);
+	pub_surv.publish(survey_info);
+	// ros::spinOnce();
+	
+}
+
 
 
 static bool getMessage(struct pollfd* pf){
 
-		uint8_t n = 0, BLEN = 120, MLEN = 10;
+		uint8_t n = 0, BLEN = 120, MLEN = 10, enter = 0;
 		unsigned char buf[BLEN];
 		unsigned char *rp = &buf[BLEN];
 		unsigned char crc  = 0;
-		enum {START_WAIT, RECEIVING_NMEA, RECEIVING_UBX, RECEIVING_UBX_PAYLOAD, MSG_RECEIVED_NMEA,MSG_RECEIVED_UBX} 
-		state = START_WAIT; 
 		uint16_t msg_lgt;
 
 		while(getbyte(pf, buf,rp, &n, BLEN) !=n){
-			// std::cout << *(rp-1);
+			//std::cout << *(rp-1);
 			switch(state){
        		   	case START_WAIT:               		 // Waiting for start of message
 					if(*(rp-1) == '$'){
@@ -471,8 +697,15 @@ static bool getMessage(struct pollfd* pf){
 								state = RECEIVING_UBX;								
 							}
 						}
-					}                        	 //                        	 // and start receiving data
+					}else if(*(rp-1) == ','){
+						posPtr = radioposBuffer;
+						state = RECEIVING_RADIO_POS;
+					}else if(*(rp-1) == 'X'){
+						survPtr = radiosurvBuffer;
+						state = RECEIVING_RADIO_SURV;
+					}                                 	 //                        	 // and start receiving data
        		      	break;
+
        		   	case RECEIVING_NMEA:                       // Message Start received
 					if(*(rp-1) == '*'){              // If end of message...
 						if (hex_decode(rp,2, &crc)){
@@ -504,6 +737,65 @@ static bool getMessage(struct pollfd* pf){
 						crc ^= *(rp-1);
 					}
        		        break;
+
+				case RECEIVING_RADIO_POS:                       // Message Start received
+					if ((posPtr - radioposBuffer) > 40) {
+						state = START_WAIT;
+						break;
+					}
+					
+					if(*(rp-1) == '\r'){              // If end of message...
+						#ifdef DEBUG
+						if(configured){
+							if(!survey )ROS_WARN("RECEIVED POS: ");
+							else ROS_WARN("RECEIVED POS: ");
+							for(unsigned char* last = posPtr;((posPtr)-radioposBuffer) > 0 ;)
+				 	 			std::cout << radioposBuffer[last-posPtr--];
+				 			std::cout << "\n\n";
+			 			}
+						#endif
+						//parseRADIO(POS);
+						state  = START_WAIT;														  
+						break;
+					}                            		      	 
+       		      	else{
+						*(posPtr++) = *(rp-1); 
+					}
+       		        break;
+
+				case RECEIVING_RADIO_SURV:
+					if ((survPtr - radiosurvBuffer) > 110) {
+						state = START_WAIT;
+						break;
+					}
+					//std::cout << *(rp-1);                       // Message Start received
+					if(*(rp-1) == '\r'){              // If end of message...
+						enter++;
+						if (enter != 3) break;
+						#ifdef DEBUG
+							if(configured){
+							if(!survey )ROS_WARN("RECEIVED SURV: ");
+								else ROS_WARN("RECEIVED SURV: ");
+								for(unsigned char* last = survPtr;((survPtr)-radiosurvBuffer) > 0 ;)
+									std::cout << radiosurvBuffer[last-survPtr--];
+								std::cout << "\n\n";
+							}
+						#endif
+						enter = 0;
+						//parseRADIO(SURV);
+						state  = START_WAIT;														  
+						break;
+					}
+					else if (*(rp-1) == '\n')
+					{
+						break;
+					}                             		      	 
+       		      	else{
+						*(survPtr++) = *(rp-1); 
+						//std::cout << survPtr-1 << "        " << &radiosurvBuffer[0] << "      ";
+						//std::cout << *(survPtr-1) << " 1    " << *(rp-1) << " 2     " << survPtr - radiosurvBuffer -1 << " 3     "  <<  radiosurvBuffer[survPtr - radiosurvBuffer - 1] << "\n";
+					}
+       		        break;
 					   
 				case RECEIVING_UBX:                  // Message Start received
 					*(ubxPtr++) = *(rp-1);
@@ -531,7 +823,9 @@ static bool getMessage(struct pollfd* pf){
 static void loop_get(struct pollfd* pf){
 	
 	while(ros::ok()){
+		pfd_lock.lock();
 		getMessage(pf);
+		pfd_lock.unlock();
 	}
 }
 void main_with_exceptions(std::string &port_name, int vid, int pid){	
@@ -551,11 +845,11 @@ void rtcm_streamer(const mavros_msgs::RTCM::ConstPtr& _msg, struct pollfd* pf, i
 	// memmove(puf,_msg->data,_msg->data.size());
 
 	// ROS_INFO("WRITTEN");
-	for(; a <_msg->data.size();a++){
+	for(; a <_msg->data.size()+1;a++){
 		puf[a] = _msg->data[a];
-		// std::cout <<std::hex << (int)puf[a]<< " ";
+		//std::cout << (int)puf[a]<< ",";
 	}
-	// std::cout <<"\n\n";
+	//std::cout <<" real \n\n";
 	// puf[a+1] =13; 
 	// puf[a+2] =10;
 	// std::cout <<std::hex << (int)puf[a+1]<< " "<< (int)puf[a+2];
@@ -564,9 +858,15 @@ void rtcm_streamer(const mavros_msgs::RTCM::ConstPtr& _msg, struct pollfd* pf, i
 	if(_msg->data[0] ==0xb5){
 		return;
 	}
-
-	if(write(pf[0].fd, puf, sizeof(puf)) != sizeof(puf))
-		ROS_ERROR("RTCM: data not written");			
+	
+	size_t b = write(pf[0].fd, puf, sizeof(puf));
+	
+	if(b != sizeof(puf)){
+		ROS_ERROR("RTCM: data not written");
+		if (errno == EAGAIN)
+			perror("BOSTA");
+	std::cout << "\n";
+	}
 }
 
 void signalHandler( int signum ) {
@@ -580,8 +880,8 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "gps_target");
 	ros::NodeHandle n;
 	ros::NodeHandle pnh("~");
-	static std::string portName_;
-	int product_id, vendor_id, sizer = 0;
+	static std::string portName_ = "/dev/ttyACM";
+	int product_id, vendor_id, sizer = 0, port = 0;
 	bool port_opened = false;
 	int count_cfg;
 
@@ -595,14 +895,18 @@ int main(int argc, char **argv)
     pnh.param<int>("prod", product_id, 0x01a8); //0x6001
 	pnh.param<bool>("config", configured, false);
 	pnh.param<bool>("survey", survey, false);
-	
+	pnh.param<int>("port", port, 0);
+	portName_ = portName_ + std::to_string(port);
+	std::cout << portName_ << "\n\n";
 
 	std::vector<double> origin_geo_vector;
 	pnh.getParam("origin_geo",origin_geo_vector);
-  	origin_geo_.latitude  = origin_geo_vector[0];
+	origin_geo_.latitude  = origin_geo_vector[0];
   	origin_geo_.longitude = origin_geo_vector[1];
   	origin_geo_.altitude  = origin_geo_vector[2];
 
+	//std::cout << origin_geo_.latitude << "   ffefff   " << origin_geo_.longitude << "\n"; 
+  	
 	pfd[0].events = POLLIN;
 	
 	PUBX_OUT = {0x209100ef, (unsigned char) (survey ? 1 : 0), "PUBX_OUT" };
@@ -654,11 +958,11 @@ int main(int argc, char **argv)
 	ros::AsyncSpinner spinner(2);
 	spinner.start();
 	int i = 0;
-	std::mutex pfd_lock;
 	  
 		while(!port_opened){
 			main_with_exceptions(portName_, vendor_id, product_id);
-			portName_= "/dev/ttyACM0";
+			//portName_= port;
+			//portName_ = "/dev/ttyACM0";
 			
 			if(boost::get<unsigned char>(NMEA_IN.idValue) != 0){
 				ROS_INFO("Changing VMIN");
@@ -696,7 +1000,7 @@ int main(int argc, char **argv)
 			char start_stream= 'a';
 			if(write(pfd[0].fd, &start_stream , 1) != 1)
 				ROS_ERROR("PIC32: FAILED TO START NMEA STREAM");
-		 }
+		}
 
 			sub_rtcm = n.subscribe<mavros_msgs::RTCM>("/rtcm_stream",3, std::bind(rtcm_streamer, std::placeholders::_1, pfd, sizer));
 			th1.join();

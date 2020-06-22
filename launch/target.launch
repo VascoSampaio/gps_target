@@ -7,6 +7,7 @@
 		<arg name="debug" default="False"/>
 		<arg name='survey' default="False"/>
 		<arg name='USB' default="True"/>
+		<arg name='port' default="0"/>
 		
 
 	<group if="$(eval arg('debug') == 0)">
@@ -18,12 +19,13 @@
 			<param name="config" value="$(arg config)"/>
 			<param name="survey" value="$(arg survey)"/>
 			<param name="USB" value="$(arg USB)"/>
-			<rosparam param="origin_geo">[38.7319435, -9.1315461, 0]</rosparam>
+			<param name="port" value="$(arg port)"/>
+			<rosparam param="origin_geo">[39.457674, -8.680636, 0]</rosparam>
 		</node>
   	</group>
 	
 	<group if="$(eval arg('debug') == 1)">
-    	<node pkg="gps_target" name="target" type="gps_target_node_debug" output="screen" >
+    	<node pkg="gps_target" name="target" type="gps_target_node_debug" output="screen"  >
 			<param name="vend" value="$(arg vend)"/>
 			<param name="prod" value="$(arg prod)"/>
 			<param name="rate" value="$(arg rate)"/>
@@ -31,7 +33,8 @@
 			<param name="config" value="$(arg config)"/>
 			<param name="survey" value="$(arg survey)"/>
 			<param name="USB" value="$(arg USB)"/>
-			<rosparam param="origin_geo">[38.7319435, -9.1315461, 0]</rosparam>
+			<param name="port" value="$(arg port)"/>
+			<rosparam param="origin_geo">[39.4588452, -8.6668376, 0]</rosparam>
 		</node>
   	</group>
 

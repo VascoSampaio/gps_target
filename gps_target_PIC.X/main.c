@@ -34,6 +34,10 @@
 
 #include "CC1125.h"
 #include "communicationLib.h"
+#define PUBX_CFG  0x209100ed
+#define RATE_CFG  0x30210001
+#define MONN_CFG  0x20910350
+#define UBX_CFG   0x10740001
 
 enum {START_WAIT = 0, RECEIVING_NMEA, RECEIVING_UBX, RECEIVING_UBX_PAYLOAD, PRE_RECV_UBX};
 enum {POS = 0, SURV};
@@ -44,7 +48,125 @@ unsigned char *nmeaPtr = nmeaBuffer;
 unsigned char *ubxPtr = ubxBuffer;
 unsigned char to_send[120];
 int msg_len = 0, i = 0;
-bool mRcv, mSend;
+bool mRcv, mSend, ack;
+
+void chooseUBX(){
+    if(ubxBuffer[2] == 0x05){
+        if(ubxBuffer[3] == 0x01){
+            ack = true;
+        } else if(ubxBuffer[3] == 0x00) {
+            //TODO NACK
+        }
+    }
+    
+    if(ubxBuffer[2] == 0x0a){
+        if(ubxBuffer[3] == 0x36){
+            
+            /*byte a = ReadStatus();      
+             
+             if ((a >> 4) != 0x02){
+             if ((a >> 4) == 0x07){
+                 //Toggle(WHITE_LED);
+                 WriteStrobe(STROBE_SFTX);
+                 
+             }
+             WriteStrobe(STROBE_STX);
+             }
+            
+            WriteFIFO(ubxBuffer, 108);
+            a = ReadStatus();  
+            a = ReadStatus(); 
+            */
+        }
+    }      
+}
+
+bool cfg_gps(uint16_t rate){
+    
+    send_cfg(PUBX_CFG, 17,(char) 0, 0);
+    U4STAbits.URXEN = 1; 
+    
+    send_cfg(RATE_CFG, 18,(char) 0, rate);
+    
+    while(!ack);
+    ack = false;
+    
+    /*send_cfg(UBX_CFG, 17,(char) 1, 0);
+    
+    while(!ack);
+    ack = false;
+    
+    send_cfg(MONN_CFG, 17,(char) 1, 0);
+    
+    while(!ack);
+    ack = false;
+*/   
+    send_cfg(PUBX_CFG, 17,(char) 1, 0);
+    
+    while(!ack);
+    ack = false;
+    
+}
+
+void send_cfg(int keyValue, int write_size, char enable, uint16_t rate){
+    unsigned char buf[20];
+    int ct = 0;
+    
+    buf[0]  = 0xb5; /*Header sync1*/
+	buf[1]  = 0x62; /*Header sync2*/
+	buf[2]  = 0x06; /*class ID: CFG*/
+	buf[3]  = 0x8a;
+	buf[4]  = write_size-8;
+	buf[5]  = 0;    /*lenght MSB*/
+	buf[6]  = 0x00; //version
+	buf[7]  = 0x01; //layers
+	buf[8]  = 0x00; //reserved
+	buf[9]  = 0x00; //reserved
+	buf[10] = keyValue & 0xFF; 
+	buf[11] = (keyValue >>  8) & 0xFF;
+	buf[12] = (keyValue >> 16) & 0xFF;
+	buf[13] = (keyValue >> 24) & 0xFF;
+    
+    switch(write_size){
+        case 17:
+            memmove(buf + 14, &enable, sizeof(enable));
+            break;
+        case 18:
+            memmove(buf + 14, &rate, sizeof(rate));
+            break;
+    }
+    
+    ubx_checksum(buf + 2, write_size-4, buf + write_size - 2, 0, 0);
+    
+    for (ct = 0; ct < write_size; ct++){
+        //while(!IFS2bits.U4TXIF);
+        U4TXREG = buf[ct];
+        Delay_ms(10);
+    }
+    
+}
+
+static bool ubx_checksum(const unsigned char *data,  unsigned len, unsigned char ck[2], unsigned char comparator_a, unsigned char comparator_b)
+{
+	const unsigned char *buffer = data;
+	unsigned char ck_a = 0;
+	unsigned char ck_b = 0;
+
+	while(len--){
+		ck_a += *buffer++;
+		ck_b += ck_a;				
+	}
+
+	if (ck != NULL){
+		ck[0] = ck_a;
+		ck[1] = ck_b;
+	}
+
+	if(comparator_a == ck_a && comparator_b == ck_b) {
+		return true;
+	}
+	return false;
+}
 
 unsigned char* chooseNMEA(int opt){
     int n_virg = 0;
@@ -78,13 +200,15 @@ bool getMessage(unsigned char currChar){
 				state = RECEIVING_NMEA;
 			}
 			else if(currChar == 0xb5){
+                ubxPtr = ubxBuffer;
+                *(ubxPtr++) = currChar; 
                 state = PRE_RECV_UBX;
 			}    	 //                        	 // and start receiving data
        	  	break;
             
         case PRE_RECV_UBX:
 			if(currChar == 0x62){
-				ubxPtr = ubxBuffer;		// Start character received...
+				*(ubxPtr++) = currChar; 		// Start character received...
 				state = RECEIVING_UBX;								
 			}
             break;
@@ -92,30 +216,30 @@ bool getMessage(unsigned char currChar){
 			if(currChar == '*'){              // If end of message...
 				state  = START_WAIT;
 				nmeaPtr = nmeaBuffer;
-                //Toggle(ORANGE_LED);
 				return true;
 			}                             		      	 
        	   	else{
-                U1TXREG = U4RXREG;
 				*(nmeaPtr++) = currChar; 
             }            
        	    break;
 					   
 		case RECEIVING_UBX:                  // Message Start received
 			*(ubxPtr++) = currChar;
-			if ((ubxPtr - ubxBuffer) == 4){ 
+			if ((ubxPtr - ubxBuffer) == 6){ 
 				msg_len = *(ubxPtr-2) | *(ubxPtr-1) << 8; 
 				state = RECEIVING_UBX_PAYLOAD;
-                return true;
 			}
 
 			break;
 						
 		case RECEIVING_UBX_PAYLOAD:	
 			*(ubxPtr++) = currChar;	
-			if(ubxPtr - ubxBuffer - 6 == msg_len){ 
+            int b = ubxPtr - ubxBuffer;
+			if(ubxPtr - ubxBuffer - 8 == msg_len){ 
 				Toggle(WHITE_LED);
                 state = START_WAIT;
+                chooseUBX();
+                return false;
 			}
 			break;
 	}
@@ -126,41 +250,38 @@ void __ISR(_UART_1_VECTOR, IPL7SAVEALL) UART1ISR(void){ //UART FROM PC TO GPS  -
     unsigned char curChar;
     while(U1STAbits.URXDA){
         curChar = U1RXREG;
-        //U4TXREG    = curChar; //   U1RXREG; //
+        U4TXREG = curChar;
     }
-    IFS1bits.U1RXIF = 0;
-    //Toggle(WHITE_LED);
-    
+    IFS1bits.U1RXIF = 0;   
 };
 
 void __ISR(_UART_4_VECTOR, IPL6SAVEALL) UART4ISR(void){ //UART FROM GPS TO PC - LED1 White
      while(U4STAbits.URXDA){
-        //U1TXREG    = U4RXREG; // curChar; //
-         //mRcv = true;
          
          if(getMessage((unsigned char) U4RXREG)){
              
-             
              byte a = ReadStatus();      
              
+             if ((a >> 4) != 0x02){
              if ((a >> 4) == 0x07){
                  Toggle(WHITE_LED);
                  WriteStrobe(STROBE_SFTX);
-                 WriteStrobe(STROBE_STX);
+                 
+             }
+             WriteStrobe(STROBE_STX);
              }
              a = ReadStatus();
-             if(i == 7){
-             WriteFIFO(nmeaBuffer, 108);
-             } else if (i == 10){
+             if(i == 20){
+             WriteFIFO(nmeaBuffer+3, 108);
+             } else if (i == 23){
                i = 0;  
              } else {
              WriteFIFO(nmeaBuffer+17, 36);  
              }
              i++;
+             a = ReadStatus();
             Toggle(ORANGE_LED);
-        }
-         //Toggle(WHITE_LED);
-         
+        }       
     }
     //LATEINV         = 0x8; 
     IFS2bits.U4RXIF = 0;
@@ -177,16 +298,16 @@ void __ISR(_TIMER_1_VECTOR, IPL5SAVEALL) Timer1ISR(void){
 void main(){ 
 
     byte a = 0;
-   
-    IO_SETUP(); //INITIALIZE I/O
+    uint16_t rate = 40;
     
+    IO_SETUP(); //INITIALIZE I/O
     
     GENERAL_INTERRUPT_SETUP(); //SETUP INTERRUPT 
     UART4_Initializer(115200);   //baud rate =  115K    
     CC1125_Init(10);
     a = ReadStatus();
-    //WriteStrobe(STROBE_SRES);
     U4INT_SETUP();
+    SPI_INT_SETUP();
     
     
     Delay_ms(10);
@@ -194,31 +315,28 @@ void main(){
     Toggle(WHITE_LED);
     a = ReadReg(REG_RFEND_CFG1);
     a = ReadReg(REG_RFEND_CFG0);
+    a = ReadStatus();
+    if((a >> 4) == 0x07) WriteStrobe(STROBE_SFTX); 
     WriteStrobe(STROBE_STX);
     
     Delay_ms(10);
-    INTEnableInterrupts();   
+    INTEnableInterrupts();
+    
+    cfg_gps(rate);
     
     while (1){
-        
-    
     
     //byte c[CC_MAX_PACKET_DATA_SIZE] = {'P','U','B','X',0,0,0,0,0,0,'P','U','B','X',0,0,0,0,0,0,'P','U','B','X',0,0,0,0,0,0,'P','U','B','X',0,0,0,0,0,0,'P','U','B','X',0,0,0,0,0,0,'P','U','B','X',0,0,0,0,0,0,'P','U','B','X',0,0,0,0,0,0,'P','U','B','X',0,0,0,0,0,0,'P','U','B','X',0,0,0,0,0,0,'P','U','B','X',0,0,0,0,0,0,'P','U','B','X',0,0,0,0,0};
     a = ReadExtendedReg(EXT_NUM_TXBYTES);
     a= ReadStatus();
-    
-    if(mRcv){
-        
-        mRcv = false;
-    }
-    //WriteFIFO(c, 109);
+
+
     if(ReadStatus() == 0x6F){
         WriteStrobe(STROBE_SFTX);
         WriteStrobe(STROBE_STX);
     }
     Delay_ms(800);
-    //Toggle(WHITE_LED);
-    //Toggle(ORANGE_LED);
+
     }
 }
    

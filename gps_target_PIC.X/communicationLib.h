@@ -19,6 +19,7 @@ extern "C" {
 
 
 void UART4_Initializer(unsigned long);
+void UART1_Initializer(unsigned long);
 void SPI_INT_SETUP();
 void GENERAL_INTERRUPT_SETUP();
 void IO_SETUP();

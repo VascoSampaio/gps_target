@@ -20,10 +20,11 @@ void UART4_Initializer(unsigned long baudRate){
   // UART Configuration
     U4STA                             = 0;
     U4STAbits.UTXEN                   = 1;  // TX is enabled
-    U4STAbits.URXEN                   = 1;  // RX is enabled
+    U4STAbits.URXEN                   = 0;  // RX is disabled
     U4STAbits.URXISEL                 = 0;
     U4MODEbits.ON                     = 1;  // UART4 module is Enabled
 }
+
 
 //inline void SPI1_Init()
 //{
@@ -54,6 +55,7 @@ void IO_SETUP(){
     TRISB = 0x00;
     TRISBbits.TRISB7 = 0;
     TRISBbits.TRISB6 = 1;
+    TRISBbits.TRISB2 = 1;
     
     //Write to port latch
     LATE =  0x00; //Turn on LED's 

@@ -181,14 +181,14 @@ void Radio::WriteFIFO(byte *data, byte bytesToWrite)
   int k;
   Clr(spiSS);
   SPIGetSet(FIFOS);
-  Serial.println("Write FIFO " + radioName);
+  //Serial.println("Write FIFO " + radioName);
   for (k = 0; k < bytesToWrite; k++)
   {
     SPIGetSet(data[k]);
-    Serial.print(data[k]);
-    Serial.print("\t");
+    //Serial.print(data[k]);
+    //Serial.print("\t");
   }
-  Serial.println();
+  //Serial.println();
   Set(spiSS);
 }
 

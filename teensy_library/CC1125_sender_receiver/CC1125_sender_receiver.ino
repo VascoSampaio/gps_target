@@ -48,9 +48,42 @@ enum class Rec {
 #define CC_IO1_RECEIVER   5
 #define CC_IO2_RECEIVER   4
 
+enum {WAIT, RTK, DATA}
+    state = WAIT;
+int ctr = 0, size_m = 0;  
+byte rtk_data[300];
 bool a = true;
+bool pr = false;
+byte stat = 0;
+int ct = 0;
 int last_time = millis();
+byte incomingByte = 0;
+const int ledPin = 13;
 SPISettings settingsA(1000000, MSBFIRST, SPI_MODE0);
+
+bool getMessage(byte in){
+  switch(state){
+    case WAIT:
+      if(in == 'R') state = RTK;
+      break;
+    case RTK:
+      size_m = (int) in;
+      Serial.println(size_m);
+      state = DATA;
+      break;
+    case DATA:
+      Serial.print("DATA:    ");
+      Serial.println(ctr);
+      rtk_data[ctr] = in;
+      ctr++;
+      if(ctr == size_m){
+        state = WAIT;
+        return true;
+      }
+      break;
+  }
+  return false;
+}
 
 #ifdef SENDER
 rfend_cfg sender_rfend_cfg  = {0x20, 0x2f};
@@ -74,10 +107,10 @@ void receiverWrapper() {
 
 void setup (void) {
 
-  Serial.begin(115200);
+  Serial.begin(2000000);
   while (!Serial && millis() < 4000 );
   Serial.println("\n" __FILE__ " " __DATE__ " " __TIME__);
-
+  pinMode(ledPin, OUTPUT);
 #ifdef SENDER
   sender.configurator(10);
   attachInterrupt(digitalPinToInterrupt(sender.ccIO0), senderWrapper, FALLING); // interrrupt 1 is data ready
@@ -96,27 +129,73 @@ void setup (void) {
 
 void loop (void) {
 
-  byte c[CC_MAX_PACKET_DATA_SIZE];
+  //byte c[CC_MAX_PACKET_DATA_SIZE];
 
-  last_time = millis();
-  int2bytearr(c, last_time, sizeof(c));
+  //last_time = millis();
+  //int2bytearr(c, last_time, sizeof(c));
 
-#ifdef SENDER
-sender.WriteFIFO(c, sizeof(c));
-delay(10);
-  if (sender.ReadStatus() == TXFIFOERROR) {
-    sender.WriteStrobe(STROBE_SFTX);  //Flux TX;
-    sender.WriteStrobe(STROBE_STX);
-  }
-#endif
+  #ifdef SENDER
+  sender.WriteFIFO(c, sizeof(c));
+  delay(10);
+    if (sender.ReadStatus() == TXFIFOERROR) {
+      sender.WriteStrobe(STROBE_SFTX);  //Flux TX;
+      sender.WriteStrobe(STROBE_STX);
+    }
+  #endif
   //receiver.ReadExtendedReg(EXT_NUM_RXBYTES);
   //Serial.println(receiver.ReadExtendedReg(EXT_NUM_RXBYTES));
 
-  if (receiver.ReadStatus() == RXFIFOERROR) {
-    receiver.WriteStrobe(STROBE_SFRX);
-    receiver.WriteStrobe(STROBE_SRX);
+  
+
+  //Serial.println(receiver.ReadStatus() >> 4);
+  if(ct == 20000){
+    stat = receiver.ReadStatus() >> 4;
+    //Serial.println(stat >> 4);
+  
+    
+    if ((stat) != 0x01){
+      if (stat == 0x06){             
+      receiver.WriteStrobe(STROBE_SFRX);
+    }
+      receiver.WriteStrobe(STROBE_SRX);
+       
+      digitalWrite(ledPin, LOW);             
+    } else digitalWrite(ledPin, HIGH);
+    ct = 0;
   }
 
-  //Serial.println("\n");
-  delay(300);
+      if (stat == 0x07){ 
+                   
+      receiver.WriteStrobe(STROBE_SFTX);
+    }
+     
+  
+  /*if (receiver.ReadStatus() == RXFIFOERROR) {
+    receiver.WriteStrobe(STROBE_SFRX);
+    receiver.WriteStrobe(STROBE_SRX);
+  }*/
+
+  if(Serial.available()){
+    
+   //stat = receiver.ReadStatus() >> 4;
+    incomingByte = Serial.read();
+    //Serial.print(Serial.available());
+    //Serial.print(',');
+    //getMessage(incomingByte);
+    
+    
+ 
+    
+    //Serial.flush();
+    receiver.WriteStrobe(STROBE_STX);
+    receiver.WriteFIFO(&incomingByte, 1);
+    //digitalWrite(ledPin, LOW);
+    //receiver.WriteStrobe(STROBE_SRX);
+    pr = true;
+  } 
+  
+
+  //Serial.println("\n");*/
+  //delay(200);
+  ct++;
 }

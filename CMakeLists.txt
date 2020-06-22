@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(gps_target)
 
 ## Compile as C++17, supported in ROS Kinetic and newer
-add_compile_options(-std=c++17)
+add_compile_options(-std=c++17 -g)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
