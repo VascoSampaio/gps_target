@@ -34,7 +34,7 @@
 			<param name="survey" value="$(arg survey)"/>
 			<param name="USB" value="$(arg USB)"/>
 			<param name="port" value="$(arg port)"/>
-			<rosparam param="origin_geo">[39.4588452, -8.6668376, 0]</rosparam>
+			<rosparam param="origin_geo">[39.457677, -8.680613, 0]</rosparam>
 		</node>
   	</group>
 

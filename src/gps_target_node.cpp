@@ -283,6 +283,7 @@ int getDivisor(unsigned char *rp){
 	float divisor = 0.1;
 
 	while(*++aux != '.'){
+		if(*aux != ',' && *aux != '.' && (*aux > '9' && *aux < '0')) return -1;
 		if(*aux == ',')
 			break;
 		divisor*=10;
@@ -296,8 +297,6 @@ void parsePUBX(){
 	double divisor = 10;
 	gps_pubx.latitude = gps_pubx.longitude = 0; 
 
-	
-
 	while(*++rp != ','){
 	// 	std::cout << *rp;
 	}
@@ -305,7 +304,7 @@ void parsePUBX(){
 	// std::cout << "\n";
 	for(;*++rp != ',';){
 		if(*rp != '.' ){
-			gps_pubx.latitude += (*rp -'0') *divisor;
+			if(*rp <= '9' && *rp >= '0') gps_pubx.latitude += (*rp -'0') *divisor;
 			// std::cout << *rp -'0';
 			divisor /= 10;
 		}
@@ -315,7 +314,7 @@ void parsePUBX(){
 	rp +=2; divisor=100;
 	for(;*++rp != ',';){
 		if(*rp != '.' ){
-			gps_pubx.longitude += (*rp -'0') *divisor;
+			if(*rp <= '9' && *rp >= '0') gps_pubx.longitude += (*rp -'0') *divisor;
 			// std::cout << *rp -'0';
 			divisor /= 10;
 		}
@@ -327,9 +326,18 @@ void parsePUBX(){
 		gps_pubx.longitude = (int(gps_pubx.longitude)+(gps_pubx.longitude-int(gps_pubx.longitude))*100/60);
 // 
 	rp++;
-	while(*++rp != ','){
-	//std::cout << *rp;
-	}
+		divisor = getDivisor(rp);
+if(divisor < 0) return;
+		gps_pubx.altref = 0;
+		for(;*++rp != ',';){
+			// std::cout << *rp;
+			if(*rp == '\0') break;
+			if(*rp != '.' ){
+				if(*rp <= '9' && *rp >= '0') gps_pubx.altref += (*rp -'0') *divisor;
+				// std::cout << *rp -'0';
+				divisor /= 10;
+			}
+		}
 
 	aux = rp + 1;
 	while(*++rp != ','){ // Navigation Status
@@ -337,40 +345,44 @@ void parsePUBX(){
 	}
 
 	divisor = getDivisor(rp);
+if(divisor < 0) return;
 	gps_pubx.hAcc = 0;
 	for(;*++rp != ',';){
 		if(*rp != '.' ){
-			gps_pubx.hAcc += (*rp -'0') *divisor;
+			if(*rp <= '9' && *rp >= '0') gps_pubx.hAcc += (*rp -'0') *divisor;
 			// std::cout << *rp -'0';
 			divisor /= 10;
 		}
 	}
 
 	divisor = getDivisor(rp);
+if(divisor < 0) return;
 	gps_pubx.vAcc = 0;
 	for(;*++rp != ',';){
 		if(*rp != '.' ){
-			gps_pubx.vAcc += (*rp -'0') *divisor;
+			if(*rp <= '9' && *rp >= '0') gps_pubx.vAcc += (*rp -'0') *divisor;
 			//std::cout << *rp -'0';
 			divisor /= 10;
 		}
 	}
 
 	divisor = getDivisor(rp);
+if(divisor < 0) return;
 	gps_pubx.SOG = 0;
 	for(;*++rp != ',';){
 		if(*rp != '.' ){
-			gps_pubx.SOG += (*rp -'0') *divisor;
+			if(*rp <= '9' && *rp >= '0') gps_pubx.SOG += (*rp -'0') *divisor;
 			//std::cout << *rp -'0' ;
 			divisor /= 10;
 		}
 	}
 
 	divisor = getDivisor(rp);
+if(divisor < 0) return;
 	gps_pubx.COG = 0;
 	for(;*++rp != ',';){
 		if(*rp != '.' ){
-			gps_pubx.COG += (*rp -'0') *divisor;
+			if(*rp <= '9' && *rp >= '0') gps_pubx.COG += (*rp -'0') *divisor;
 			// std::cout << *rp -'0';
 			divisor /= 10;
 		}
@@ -384,36 +396,45 @@ void parsePUBX(){
 	}
 
 	divisor = getDivisor(rp);
+if(divisor < 0) return;
 	gps_pubx.HDOP = 0;
 	for(;*++rp != ',';){
 		if(*rp != '.' ){
-			gps_pubx.HDOP += (*rp -'0') *divisor;
+			if(*rp <= '9' && *rp >= '0') gps_pubx.HDOP += (*rp -'0') *divisor;
 			// std::cout << *rp -'0';
 			divisor /= 10;
 		}
 	}
 
 	divisor = getDivisor(rp);
+if(divisor < 0) return;
 	gps_pubx.VDOP = 0;
 	for(;*++rp != ',';){
 		if(*rp != '.' ){
-			gps_pubx.VDOP += (*rp -'0') *divisor;
+			if(*rp <= '9' && *rp >= '0') gps_pubx.VDOP += (*rp -'0') *divisor;
 			// std::cout << *rp -'0';
 			divisor /= 10;
 		}
 	}
 
 	divisor = getDivisor(rp);
+if(divisor < 0) return;
 	gps_pubx.TDOP = 0;
 	for(;*++rp != ',';){
 		if(*rp != '.' ){
-			gps_pubx.TDOP += (*rp -'0') *divisor;
+			if(*rp <= '9' && *rp >= '0') gps_pubx.TDOP += (*rp -'0') *divisor;
 			// std::cout << *rp -'0';
 			divisor /= 10;
 		}
 	}
 	
-	gps_pubx.noSat = *++rp -'0';
+	gps_pubx.noSat = 0;
+		divisor = getDivisor(rp);
+if(divisor < 0) return;
+		for(;*++rp != ',';){
+			if(*rp <= '9' && *rp >= '0') gps_pubx.noSat += (*rp -'0') * divisor;
+			divisor /= 10 ;	
+		}
 
 	
 	actual_coordinate_geo.latitude  = gps_pubx.latitude;
@@ -422,9 +443,25 @@ void parsePUBX(){
 	geometry_msgs::Point32 target_pose = multidrone::geographic_to_cartesian(actual_coordinate_geo, origin_geo_);
 	gps_target::SurveyGPS survey_info;
 
+	survey_info.Header.stamp = ros::Time::now();
+	survey_info.Header.seq++;
+	if(abs(target_pose.x - survey_info.x) >  100) {
+		ROS_WARN("DIFFERENCE X");
+		myfile << "DIFFERENCE X\n";
+		std::cout << target_pose.x - survey_info.x << "TARGETX" << target_pose.x << "    " << gps_pubx.latitude << "   " << gps_pubx.longitude << "\n"; 
+		myfile << target_pose.x - survey_info.x << "TARGETX" << target_pose.x << "\n"; 
+	}
+
+	if(abs(target_pose.y - survey_info.y) >  100) {
+		ROS_WARN("DIFFERENCE Y");
+		myfile << "DIFFERENCE Y\n";
+		std::cout << target_pose.y - survey_info.y << "TARGETy" << target_pose.y << "\n";
+		myfile << target_pose.x - survey_info.x << "TARGETy" << target_pose.x << "\n";
+	}
+
 	survey_info.x = target_pose.x;
 	survey_info.y = target_pose.y;
-	survey_info.z = 0;
+	survey_info.z = gps_pubx.altref;
 	survey_info.navStat[0] = gps_pubx.navSat[0];
 	survey_info.navStat[1] = gps_pubx.navSat[1];
 	survey_info.numSat = gps_pubx.noSat;
@@ -455,19 +492,24 @@ void parseRADIO(unsigned char opt){
 		for(;*++rp != ',';){
 			// std::cout << *rp;
 			if(*rp != '.' ){
-				gps_pubx.latitude += (*rp -'0') *divisor;
+				if(*rp <= '9' && *rp >= '0') gps_pubx.latitude += (*rp -'0') *divisor;
+				else return;
 				// std::cout << *rp -'0';
 				divisor /= 10;
 			}
 		}
 		
 		gps_pubx.latitude = (int(gps_pubx.latitude)+(gps_pubx.latitude-int(gps_pubx.latitude))*100/60); 
-		// std::cout << "\n";
+		 
+
+		if (*(rp + 1) != 'N' && *(rp + 1) != 'S') return;
+
 		rp +=2; divisor=100;
 		for(;*++rp != ',';){
 			// std::cout << *rp;
 			if(*rp != '.' ){
-				gps_pubx.longitude += (*rp -'0') *divisor;
+				if(*rp <= '9' && *rp >= '0') gps_pubx.longitude += (*rp -'0') *divisor;
+				else return;
 				// std::cout << *rp -'0';
 				divisor /= 10;
 			}
@@ -480,12 +522,15 @@ void parseRADIO(unsigned char opt){
 	// 
 		rp++;
 		divisor = getDivisor(rp);
+if(divisor < 0) return;
+
 		gps_pubx.altref = 0;
 		for(;*++rp != ',';){
 			// std::cout << *rp;
 			if(*rp == '\0') break;
 			if(*rp != '.' ){
-				gps_pubx.altref += (*rp -'0') *divisor;
+				if(*rp <= '9' && *rp >= '0') gps_pubx.altref += (*rp -'0') *divisor;
+				else return;
 				// std::cout << *rp -'0';
 				divisor /= 10;
 			}
@@ -497,7 +542,8 @@ void parseRADIO(unsigned char opt){
 		// }
 	} else {
 		rp = &radiosurvBuffer[7];
-		// std::cout << *rp;
+
+		
 		while(*++rp != ','){
 			// std::cout << *rp;
 		}
@@ -506,7 +552,8 @@ void parseRADIO(unsigned char opt){
 		for(;*++rp != ',';){
 			// std::cout << *rp;
 			if(*rp != '.' ){
-				gps_pubx.latitude += (*rp -'0') *divisor;
+				if(*rp <= '9' && *rp >= '0') gps_pubx.latitude += (*rp -'0') *divisor;
+				else return;
 				// std::cout << *rp -'0';
 				divisor /= 10;
 			}
@@ -517,7 +564,8 @@ void parseRADIO(unsigned char opt){
 		for(;*++rp != ',';){
 			//std::cout << *rp;
 			if(*rp != '.' ){
-				gps_pubx.longitude += (*rp -'0') *divisor;
+				if(*rp <= '9' && *rp >= '0') gps_pubx.longitude += (*rp -'0') *divisor;
+				else return;
 				// std::cout << *rp -'0';
 				divisor /= 10;
 			}
@@ -530,12 +578,14 @@ void parseRADIO(unsigned char opt){
 	// 
 		rp++;
 		divisor = getDivisor(rp);
+if(divisor < 0) return;
 		gps_pubx.altref = 0;
 		for(;*++rp != ',';){
 			// std::cout << *rp;
 			if(*rp == '\0') break;
 			if(*rp != '.' ){
-				gps_pubx.altref += (*rp -'0') *divisor;
+				if(*rp <= '9' && *rp >= '0') gps_pubx.altref += (*rp -'0') *divisor;
+				else return;
 				// std::cout << *rp -'0';
 				divisor /= 10;
 			}
@@ -549,44 +599,55 @@ void parseRADIO(unsigned char opt){
 		}
 
 		divisor = getDivisor(rp);
+if(divisor < 0) return;
 		gps_pubx.hAcc = 0;
 		for(;*++rp != ',';){
 			// std::cout << *rp;
 			if(*rp != '.' ){
-				gps_pubx.hAcc += (*rp -'0') *divisor;
+				if(*rp <= '9' && *rp >= '0') gps_pubx.hAcc += (*rp -'0') *divisor;
+				else return;
 				// std::cout << *rp -'0';
 				divisor /= 10;
 			}
 		}
 
 		divisor = getDivisor(rp);
+if(divisor < 0) return;
 		gps_pubx.vAcc = 0;
 		for(;*++rp != ',';){
 			// std::cout << *rp;
 			if(*rp != '.' ){
-				gps_pubx.vAcc += (*rp -'0') *divisor;
+				if(*rp <= '9' && *rp >= '0') gps_pubx.vAcc += (*rp -'0') *divisor;
+				else return;
 				//std::cout << *rp -'0';
 				divisor /= 10;
 			}
 		}
 
 		divisor = getDivisor(rp);
+if(divisor < 0) return;
+
 		gps_pubx.SOG = 0;
 		for(;*++rp != ',';){
 			// std::cout << *rp;
 			if(*rp != '.' ){
-				gps_pubx.SOG += (*rp -'0') *divisor;
+				if(*rp <= '9' && *rp >= '0') gps_pubx.SOG += (*rp -'0') *divisor;
+				else return;
 				//std::cout << *rp -'0' ;
 				divisor /= 10;
 			}
 		}
 
 		divisor = getDivisor(rp);
+if(divisor < 0) return;
 		gps_pubx.COG = 0;
+
 		for(;*++rp != ',';){
 			// std::cout << *rp;
+			if(*rp != ',' && *rp != '.' && (*rp > '9' && *rp < '0')) return;
 			if(*rp != '.' ){
-				gps_pubx.COG += (*rp -'0') *divisor;
+				if(*rp <= '9' && *rp >= '0') gps_pubx.COG += (*rp -'0') *divisor;
+				else return;
 				// std::cout << *rp -'0';
 				divisor /= 10;
 			}
@@ -594,39 +655,51 @@ void parseRADIO(unsigned char opt){
 
 		while(*++rp != ','){
 			// std::cout << *rp;
+			if(*rp != ',' && *rp != '.' && (*rp > '9' && *rp < '0')) return;
 		}
 		while(*++rp != ','){
 			// std::cout << *rp;
+			if(*rp != ',' && *rp != '.' && (*rp > '9' && *rp < '0')) return;
 		}
 
 		divisor = getDivisor(rp);
+		if(divisor < 0) {
+			return;
+		}
 		gps_pubx.HDOP = 0;
 		for(;*++rp != ',';){
 			// std::cout << *rp;
 			if(*rp != '.' ){
-				gps_pubx.HDOP += (*rp -'0') *divisor;
+				if(*rp <= '9' && *rp >= '0') gps_pubx.HDOP += (*rp -'0') *divisor;
+				else return;
 				// std::cout << *rp -'0';
 				divisor /= 10;
 			}
 		}
 
+
 		divisor = getDivisor(rp);
+if(divisor < 0) return;
 		gps_pubx.VDOP = 0;
 		for(;*++rp != ',';){
 			// std::cout << *rp;
 			if(*rp != '.' ){
-				gps_pubx.VDOP += (*rp -'0') *divisor;
+				if(*rp <= '9' && *rp >= '0') gps_pubx.VDOP += (*rp -'0') *divisor;
+				else return;
 				// std::cout << *rp -'0';
 				divisor /= 10;
 			}
 		}
 
+
 		divisor = getDivisor(rp);
+if(divisor < 0) return;
 		gps_pubx.TDOP = 0;
 		for(;*++rp != ',';){
 			// std::cout << *rp;
 			if(*rp != '.' ){
-				gps_pubx.TDOP += (*rp -'0') *divisor;
+				if(*rp <= '9' && *rp >= '0') gps_pubx.TDOP += (*rp -'0') *divisor;
+				else return;
 				// std::cout << *rp -'0';
 				divisor /= 10;
 			}
@@ -634,8 +707,10 @@ void parseRADIO(unsigned char opt){
 		
 		gps_pubx.noSat = 0;
 		divisor = getDivisor(rp);
+if(divisor < 0) return;
 		for(;*++rp != ',';){
-			gps_pubx.noSat += (*rp -'0') * divisor;
+			if(*rp <= '9' && *rp >= '0') gps_pubx.noSat += (*rp -'0') * divisor;
+			else return;
 			divisor /= 10 ;	
 		}
 		
@@ -643,6 +718,7 @@ void parseRADIO(unsigned char opt){
 
 	}
 	
+	geometry_msgs::Point32 target_pose2 = multidrone::geographic_to_cartesian(actual_coordinate_geo, origin_geo_);
 	actual_coordinate_geo.latitude  = gps_pubx.latitude;
 	actual_coordinate_geo.longitude = gps_pubx.longitude;
 	actual_coordinate_geo.altitude  = 0;
@@ -650,6 +726,17 @@ void parseRADIO(unsigned char opt){
 	geometry_msgs::Point32 target_pose = multidrone::geographic_to_cartesian(actual_coordinate_geo, origin_geo_);
 	gps_target::SurveyGPS survey_info;
 
+	survey_info.Header.stamp = ros::Time::now();
+	survey_info.Header.seq++;
+	if(abs(target_pose.x - target_pose2.x) >  100) {
+		ROS_WARN("DIFFERENCE X");
+		std::cout << target_pose.x - target_pose2.x << "TARGETX" << target_pose.x << "\n";
+	}
+
+	if(abs(target_pose.x - target_pose2.x) >  100) {
+		ROS_WARN("DIFFERENCE Y");
+		std::cout << target_pose.y - target_pose2.y << "TARGETX" << target_pose.y << "\n";
+	}
 	survey_info.x = target_pose.x;
 	survey_info.y = target_pose.y;
 	survey_info.z = gps_pubx.altref;
@@ -697,16 +784,20 @@ static bool getMessage(struct pollfd* pf){
 								state = RECEIVING_UBX;								
 							}
 						}
-					}else if(*(rp-1) == ','){
+					}else if(*(rp-1) == '@'){
 						posPtr = radioposBuffer;
 						state = RECEIVING_RADIO_POS;
-					}else if(*(rp-1) == 'X'){
+					}else if(*(rp-1) == '!'){
 						survPtr = radiosurvBuffer;
 						state = RECEIVING_RADIO_SURV;
 					}                                 	 //                        	 // and start receiving data
        		      	break;
 
        		   	case RECEIVING_NMEA:                       // Message Start received
+					if(*(rp-1) < 0x20){
+						state = START_WAIT;
+						break;
+					} 
 					if(*(rp-1) == '*'){              // If end of message...
 						if (hex_decode(rp,2, &crc)){
 							#ifdef DEBUG
@@ -739,22 +830,28 @@ static bool getMessage(struct pollfd* pf){
        		        break;
 
 				case RECEIVING_RADIO_POS:                       // Message Start received
-					if ((posPtr - radioposBuffer) > 40) {
+					if ((posPtr - radioposBuffer) > 40 ) {
 						state = START_WAIT;
 						break;
 					}
 					
-					if(*(rp-1) == '\r'){              // If end of message...
+					if(*(rp-1) == '%'){              // If end of message...
+					*(posPtr++) = ',';
 						#ifdef DEBUG
 						if(configured){
 							if(!survey )ROS_WARN("RECEIVED POS: ");
 							else ROS_WARN("RECEIVED POS: ");
-							for(unsigned char* last = posPtr;((posPtr)-radioposBuffer) > 0 ;)
+							myfile << "RECEIVED POS\n";
+							for(unsigned char* last = posPtr;((posPtr)-radioposBuffer) > 0 ;){
 				 	 			std::cout << radioposBuffer[last-posPtr--];
+								myfile << radioposBuffer[last-posPtr];
+							}
 				 			std::cout << "\n\n";
+							 myfile << "\n\n";
 			 			}
 						#endif
-						//parseRADIO(POS);
+						
+						parseRADIO(POS);
 						state  = START_WAIT;														  
 						break;
 					}                            		      	 
@@ -764,32 +861,43 @@ static bool getMessage(struct pollfd* pf){
        		        break;
 
 				case RECEIVING_RADIO_SURV:
-					if ((survPtr - radiosurvBuffer) > 110) {
+					if ((survPtr - radiosurvBuffer) > 108 ) {
 						state = START_WAIT;
 						break;
 					}
 					//std::cout << *(rp-1);                       // Message Start received
 					if(*(rp-1) == '\r'){              // If end of message...
 						enter++;
-						if (enter != 3) break;
-						#ifdef DEBUG
-							if(configured){
-							if(!survey )ROS_WARN("RECEIVED SURV: ");
-								else ROS_WARN("RECEIVED SURV: ");
-								for(unsigned char* last = survPtr;((survPtr)-radiosurvBuffer) > 0 ;)
-									std::cout << radiosurvBuffer[last-survPtr--];
-								std::cout << "\n\n";
-							}
-						#endif
-						enter = 0;
-						//parseRADIO(SURV);
-						state  = START_WAIT;														  
-						break;
 					}
 					else if (*(rp-1) == '\n')
 					{
 						break;
-					}                             		      	 
+					}        
+					else if(enter >= 2){
+						if (*(rp-1) != '&') {
+							*(survPtr++) = *(rp-1);
+						} else {
+							*(survPtr++) = ',';
+						#ifdef DEBUG
+							if(configured){
+							if(!survey )ROS_WARN("RECEIVED SURV: ");
+								else ROS_WARN("RECEIVED SURV: ");
+								myfile << "RECEIVED SURV\n";
+								for(unsigned char* last = survPtr;((survPtr)-radiosurvBuffer) > 0 ;){
+									std::cout << radiosurvBuffer[last-survPtr--];
+									myfile << radiosurvBuffer[last-survPtr];
+								}
+								std::cout << "\n\n";
+								myfile << "\n\n";
+							}
+						#endif
+						enter = 0;
+						parseRADIO(SURV);
+						state  = START_WAIT;														  
+						break;
+						}
+					}
+					                     		      	 
        		      	else{
 						*(survPtr++) = *(rp-1); 
 						//std::cout << survPtr-1 << "        " << &radiosurvBuffer[0] << "      ";
@@ -864,7 +972,7 @@ void rtcm_streamer(const mavros_msgs::RTCM::ConstPtr& _msg, struct pollfd* pf, i
 	if(b != sizeof(puf)){
 		ROS_ERROR("RTCM: data not written");
 		if (errno == EAGAIN)
-			perror("BOSTA");
+			perror("ERROR");
 	std::cout << "\n";
 	}
 }
@@ -884,6 +992,10 @@ int main(int argc, char **argv)
 	int product_id, vendor_id, sizer = 0, port = 0;
 	bool port_opened = false;
 	int count_cfg;
+
+	myfile.open ("/home/dsor/MSGLOG.txt");
+  
+  	
 
 
 	std::signal(SIGINT, signalHandler);
@@ -1008,6 +1120,7 @@ int main(int argc, char **argv)
   	 		
 		
 		close(pfd[0].fd);
+		myfile.close();
 		
 		return 0;
 	}

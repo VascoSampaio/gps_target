@@ -9,6 +9,7 @@ add_compile_options(-std=c++17 -g)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   roscpp
+  std_msgs
   mavros_msgs
   multidrone_kml_parser
   message_generation
@@ -31,7 +32,7 @@ generate_messages(
 )
 
 catkin_package(
-  CATKIN_DEPENDS roscpp mavros_msgs multidrone_kml_parser message_runtime
+  CATKIN_DEPENDS roscpp mavros_msgs std_msgs multidrone_kml_parser message_runtime
 )
 
 ## Specify additional locations of header files

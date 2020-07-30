@@ -56,6 +56,7 @@ bool a = true;
 bool pr = false;
 byte stat = 0;
 int ct = 0;
+int ct_rtk = 0;
 int last_time = millis();
 byte incomingByte = 0;
 const int ledPin = 13;
@@ -107,7 +108,7 @@ void receiverWrapper() {
 
 void setup (void) {
 
-  Serial.begin(2000000);
+  Serial.begin(115200);
   while (!Serial && millis() < 4000 );
   Serial.println("\n" __FILE__ " " __DATE__ " " __TIME__);
   pinMode(ledPin, OUTPUT);
@@ -179,7 +180,15 @@ void loop (void) {
     
    //stat = receiver.ReadStatus() >> 4;
     incomingByte = Serial.read();
-    //Serial.print(Serial.available());
+    if (incomingByte == 211) {
+      ct_rtk = 0;
+      receiver.WriteStrobe(STROBE_STX);
+      receiver.WriteFIFO(rtk_data, ct_rtk);
+      digitalWrite(ledPin, LOW);
+    }
+    rtk_data[ct_rtk] = incomingByte;
+    ct_rtk++;
+    //Serial.print(incomingByte);
     //Serial.print(',');
     //getMessage(incomingByte);
     
@@ -187,12 +196,9 @@ void loop (void) {
  
     
     //Serial.flush();
-    receiver.WriteStrobe(STROBE_STX);
-    receiver.WriteFIFO(&incomingByte, 1);
-    //digitalWrite(ledPin, LOW);
     //receiver.WriteStrobe(STROBE_SRX);
     pr = true;
-  } 
+  }
   
 
   //Serial.println("\n");*/

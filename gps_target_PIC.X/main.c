@@ -183,9 +183,11 @@ unsigned char* chooseNMEA(int opt){
                 
                 *(to_send_ptr++) = nmeaBuffer[i]; 
             }
+            to_send[51] = '&';
             return to_send;
         break;
         case SURV:
+            nmeaBuffer[109] = '%';
             return nmeaBuffer;
         break;    
     }
@@ -272,10 +274,14 @@ void __ISR(_UART_4_VECTOR, IPL6SAVEALL) UART4ISR(void){ //UART FROM GPS TO PC - 
              }
              a = ReadStatus();
              if(i == 20){
+                 nmeaBuffer[110] = '&';
+                 nmeaBuffer[3] = '!';
              WriteFIFO(nmeaBuffer+3, 108);
              } else if (i == 23){
                i = 0;  
              } else {
+                 nmeaBuffer[52] = '%';
+                 nmeaBuffer[17] = '@';
              WriteFIFO(nmeaBuffer+17, 36);  
              }
              i++;
@@ -307,7 +313,7 @@ void main(){
     CC1125_Init(10);
     a = ReadStatus();
     U4INT_SETUP();
-    SPI_INT_SETUP();
+    //SPI_INT_SETUP();
     
     
     Delay_ms(10);
