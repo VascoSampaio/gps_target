@@ -772,7 +772,7 @@ static bool getMessage(struct pollfd* pf){
 		uint16_t msg_lgt;
 
 		while(getbyte(pf, buf,rp, &n, BLEN) !=n){
-			std::cout << *(rp-1);
+			//std::cout << *(rp-1);
 			switch(state){
        		   	case START_WAIT:               		 // Waiting for start of message
 					if(*(rp-1) == '$'){
