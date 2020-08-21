@@ -36,7 +36,7 @@ extern "C" {
 //SPI
 #define CC_CS       LATREG(D,4)
 #define CC_RESET    LATREG(B,7)
-#define CC_IO0		IN4
+#define CC_IO0		IN2
 #define CC_IO1		PORTREG(D,3)
 #define CC_SCK               1000000
 #define CC_BRG      ((PBCLK / (2 * CC_SCK)) -1)

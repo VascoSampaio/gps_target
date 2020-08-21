@@ -219,8 +219,8 @@ void CC1125_Init(byte channel)
 	WriteReg(REG_PKT_CFG2, PKT_CFG2_INIT);
 	WriteReg(REG_PKT_LEN, CC_MAX_PACKET_DATA_SIZE);
 	
-	WriteReg(REG_RFEND_CFG1, 0x2f);//RFEND_CFG1_INIT);
-	WriteReg(REG_RFEND_CFG0, 0x20);//RFEND_CFG0_INIT);
+	WriteReg(REG_RFEND_CFG1, 0x3f);//RFEND_CFG1_INIT);
+	WriteReg(REG_RFEND_CFG0, 0x30);//RFEND_CFG0_INIT);
 	WriteReg(REG_AGC_GAIN_ADJUST, AGC_GAIN_ADJUST_INIT);
 	WriteReg(REG_PA_CFG0, PA_CFG0_INIT);
 
@@ -266,13 +266,15 @@ void CC1125_Init(byte channel)
 
 
 
-void __ISR(_EXTERNAL_3_VECTOR) CC_Handler(void)
+void __ISR(_EXTERNAL_2_VECTOR, IPL2SAVEALL) CC_Handler(void)
 {
-	Clr(IFS0bits.INT3IF);
+	Clr(IFS0bits.INT2IF);
+    //Toggle(WHITE_LED);
 	
 	if(CC_IO0 == 0)
 	{
 		int num_rx_bytes = ReadExtendedReg(EXT_NUM_RXBYTES);
+        //Toggle(WHITE_LED);
 		ReadFIFO(rx.raw, num_rx_bytes);
 		if(num_rx_bytes >= (CC_MAX_PACKET_DATA_SIZE +2)) Set(ccStatus.rxGo);
 	}

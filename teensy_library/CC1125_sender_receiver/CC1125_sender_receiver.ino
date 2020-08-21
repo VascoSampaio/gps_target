@@ -17,6 +17,17 @@ enum class Send {
   IO2  =14  
 };
 
+enum class Rec2 {
+  ss  = 10,
+  mosi= 11,
+  miso= 12,
+  sck = 13,
+  RESET= 3,
+  IO0  = 2,
+  IO1  =12,
+  IO2  =14  
+};
+
 enum class Rec {
   ss   =  6,
   mosi = 21,
@@ -37,6 +48,16 @@ enum class Rec {
 #define CC_IO0_SENDER   2
 #define CC_IO1_SENDER  12
 #define CC_IO2_SENDER  14
+
+//SPI 2
+#define SS_REC2        10
+#define MOSI_REC2      11
+#define MISO_REC2      12
+#define SCK_REC2       13
+#define CC_RESET_REC2   3
+#define CC_IO0_REC2     2
+#define CC_IO1_REC2    12
+#define CC_IO2_REC2    14
 
 //SPI 1
 #define SS_RECEIVER       6
@@ -151,7 +172,7 @@ void loop (void) {
   //Serial.println(receiver.ReadStatus() >> 4);
   if(ct == 20000){
     stat = receiver.ReadStatus() >> 4;
-    //Serial.println(stat >> 4);
+    Serial.println(stat);
   
     
     if ((stat) != 0x01){
@@ -169,6 +190,7 @@ void loop (void) {
                    
       receiver.WriteStrobe(STROBE_SFTX);
     }
+
      
   
   /*if (receiver.ReadStatus() == RXFIFOERROR) {
@@ -181,9 +203,12 @@ void loop (void) {
    //stat = receiver.ReadStatus() >> 4;
     incomingByte = Serial.read();
     if (incomingByte == 211) {
-      ct_rtk = 0;
       receiver.WriteStrobe(STROBE_STX);
+      delay(50);
+      stat = receiver.ReadStatus() >> 4;
+    Serial.println(stat);
       receiver.WriteFIFO(rtk_data, ct_rtk);
+            ct_rtk = 0;
       digitalWrite(ledPin, LOW);
     }
     rtk_data[ct_rtk] = incomingByte;

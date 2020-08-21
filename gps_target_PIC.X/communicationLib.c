@@ -55,6 +55,7 @@ void IO_SETUP(){
     TRISB = 0x00;
     TRISBbits.TRISB7 = 0;
     TRISBbits.TRISB6 = 1;
+    TRISBbits.TRISB8 = 1;
     TRISBbits.TRISB2 = 1;
     
     //Write to port latch
@@ -76,6 +77,22 @@ void SPI_INT_SETUP(){ //UART1 INTERRUPT SETUP
     IPC7bits.U1IS   = 2;  // Rx Interrurpt sub priority level
     IFS1bits.U1RXIF = 0;  // Flag status
     IEC1bits.U1RXIE = 1;  // Rx interrupt enable
+}
+
+
+
+
+void RECINT_SETUP(){ // UART4 INTERRUPT SETUP
+    INTCONbits.INT2EP = 0; // step 3: INT0 triggers on falling edge
+    IPC2bits.INT2IP = 2; // step 4: interrupt priority 2
+    IPC2bits.INT2IS = 1; // step 4: interrupt priority 1
+    IFS0bits.INT2IF = 0; // step 5: clear the int flag
+    IEC0bits.INT2IE = 1; // step 6: enable INT0 by setting IEC0<3>
+    /*IEC2bits.  = 1;
+    IPC9bits.U2IP   = 6;  // Rx Interrurpt priority level
+    IPC9bits.U2IS   = 3;  // Rx Interrurpt sub priority level
+    IFS2bits.U4RXIF = 0;  // Flag status
+    IEC2bits.U4RXIE = 1;  // Rx interrupt enable*/
 }
 
 void U4INT_SETUP(){ // UART4 INTERRUPT SETUP

@@ -23,6 +23,7 @@ void UART1_Initializer(unsigned long);
 void SPI_INT_SETUP();
 void GENERAL_INTERRUPT_SETUP();
 void IO_SETUP();
+void RECINT_SETUP();
 //void SPI1_Init();
 void TIMER1_SETUP();
 void U4INT_SETUP();

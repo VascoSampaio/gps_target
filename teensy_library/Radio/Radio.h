@@ -380,7 +380,6 @@ class Radio
     byte ccIO1;
     byte ccIO2;
     String radioName;
-
   public :
 
     Radio(SPIClass &, SPISettings &, const pins &pinsStruct, String _radioName, const rfend_cfg &RFEND_CFG); // : spiObject(_spiObject) {};

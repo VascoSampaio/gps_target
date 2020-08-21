@@ -238,7 +238,7 @@ bool getMessage(unsigned char currChar){
 			*(ubxPtr++) = currChar;	
             int b = ubxPtr - ubxBuffer;
 			if(ubxPtr - ubxBuffer - 8 == msg_len){ 
-				Toggle(WHITE_LED);
+				//Toggle(WHITE_LED);
                 state = START_WAIT;
                 chooseUBX();
                 return false;
@@ -266,7 +266,7 @@ void __ISR(_UART_4_VECTOR, IPL6SAVEALL) UART4ISR(void){ //UART FROM GPS TO PC - 
              
              if ((a >> 4) != 0x02){
              if ((a >> 4) == 0x07){
-                 Toggle(WHITE_LED);
+                 //Toggle(WHITE_LED);
                  WriteStrobe(STROBE_SFTX);
                  
              }
@@ -276,13 +276,24 @@ void __ISR(_UART_4_VECTOR, IPL6SAVEALL) UART4ISR(void){ //UART FROM GPS TO PC - 
              if(i == 20){
                  nmeaBuffer[110] = '&';
                  nmeaBuffer[3] = '!';
-             WriteFIFO(nmeaBuffer+3, 108);
+                //WriteStrobe(STROBE_STX);
+                a = ReadStatus();
+                a = CC_IO0;
+                WriteFIFO(nmeaBuffer+3, 108);
+                a = ReadStatus();
+                if((a >> 4) == 0x07) WriteStrobe(STROBE_SFTX); 
+                if((a >> 4) == 0x06) WriteStrobe(STROBE_SFRX); 
              } else if (i == 23){
                i = 0;  
              } else {
                  nmeaBuffer[52] = '%';
                  nmeaBuffer[17] = '@';
-             WriteFIFO(nmeaBuffer+17, 36);  
+                //WriteStrobe(STROBE_STX);
+                 //a = ReadStatus();
+                WriteFIFO(nmeaBuffer+17, 36);
+                a = ReadStatus();
+                if((a >> 4) == 0x07) WriteStrobe(STROBE_SFTX); 
+                if((a >> 4) == 0x06) WriteStrobe(STROBE_SFRX); 
              }
              i++;
              a = ReadStatus();
@@ -291,7 +302,6 @@ void __ISR(_UART_4_VECTOR, IPL6SAVEALL) UART4ISR(void){ //UART FROM GPS TO PC - 
     }
     //LATEINV         = 0x8; 
     IFS2bits.U4RXIF = 0;
-        
 };
 
 void __ISR(_TIMER_1_VECTOR, IPL5SAVEALL) Timer1ISR(void){ 
@@ -313,6 +323,7 @@ void main(){
     CC1125_Init(10);
     a = ReadStatus();
     U4INT_SETUP();
+    RECINT_SETUP();
     //SPI_INT_SETUP();
     
     
@@ -323,7 +334,9 @@ void main(){
     a = ReadReg(REG_RFEND_CFG0);
     a = ReadStatus();
     if((a >> 4) == 0x07) WriteStrobe(STROBE_SFTX); 
-    WriteStrobe(STROBE_STX);
+    if((a >> 4) == 0x06) WriteStrobe(STROBE_SFRX); 
+    WriteStrobe(STROBE_SRX);
+    a= ReadStatus();
     
     Delay_ms(10);
     INTEnableInterrupts();
@@ -333,14 +346,16 @@ void main(){
     while (1){
     
     //byte c[CC_MAX_PACKET_DATA_SIZE] = {'P','U','B','X',0,0,0,0,0,0,'P','U','B','X',0,0,0,0,0,0,'P','U','B','X',0,0,0,0,0,0,'P','U','B','X',0,0,0,0,0,0,'P','U','B','X',0,0,0,0,0,0,'P','U','B','X',0,0,0,0,0,0,'P','U','B','X',0,0,0,0,0,0,'P','U','B','X',0,0,0,0,0,0,'P','U','B','X',0,0,0,0,0,0,'P','U','B','X',0,0,0,0,0,0,'P','U','B','X',0,0,0,0,0};
-    a = ReadExtendedReg(EXT_NUM_TXBYTES);
+    //a = ReadExtendedReg(EXT_NUM_TXBYTES);
     a= ReadStatus();
+    if((a >> 4) == 0x07) WriteStrobe(STROBE_SFTX); 
+    if((a >> 4) == 0x06) WriteStrobe(STROBE_SFRX); 
 
 
-    if(ReadStatus() == 0x6F){
+    /*if(ReadStatus() == 0x6F){
         WriteStrobe(STROBE_SFTX);
         WriteStrobe(STROBE_STX);
-    }
+    }*/
     Delay_ms(800);
 
     }
