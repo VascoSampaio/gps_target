@@ -705,6 +705,8 @@ if(divisor < 0) return;
 			}
 		}
 		
+		if (rp-radiosurvBuffer >= 106) return; 
+		
 		gps_pubx.noSat = 0;
 		divisor = getDivisor(rp);
 if(divisor < 0) return;
